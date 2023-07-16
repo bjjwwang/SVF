@@ -344,6 +344,8 @@ void svf_llvm_memcpy_p0i8_p0i8_i32_MEMCPY(char* dst, char* src, int sz, int flag
     SSE_MEMCPY(dst, src, sz);
 }
 
+
+
  void svf_llvm_memmove_MEMCPY(char* dst, char* src, int sz, int flag) {
     SSE_MEMCPY(dst, src, sz);
 }
@@ -360,7 +362,7 @@ void svf_llvm_memcpy_p0i8_p0i8_i32_MEMCPY(char* dst, char* src, int sz, int flag
     SSE_MEMCPY(dst, src, sz);
 }
 
- void *svf_memmove_MEMCPY(void *str1, const void *str2, unsigned long n, int flag) {
+void *svf_memmove_MEMCPY(void *str1, const void *str2, unsigned long n, int flag) {
     SSE_MEMCPY(str1, str2, n);
 }
 
@@ -397,13 +399,18 @@ char * svf___strcpy_chk_MEMCPY(char * dest, const char * src, unsigned long dest
     SSE_STRCPY(dest, src);
 }
 
+
 extern char * svf___strcat_chk_MEMCPY(char * dest, const char * src, unsigned long destlen);
 
 extern char *svf_stpcpy_MEMCPY(char *restrict dst, const char *restrict src);
 
 extern char *svf_strcat_MEMCPY(char *dest, const char *src);
 
- char *svf_strcpy_MEMCPY(char *dest, const char *src) {
+char *svf_strcpy_MEMCPY(char *dest, const char *src) {
+    SSE_STRCPY(dest, src);
+}
+#include <stddef.h>
+char *svf_wcscpy(wchar_t* dest, const wchar_t* src) {
     SSE_STRCPY(dest, src);
 }
 
