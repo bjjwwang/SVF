@@ -1,4 +1,34 @@
 #define NULL ((void *)0)
+#include <stddef.h>
+
+//    _func_map["llvm.memset.p0i8.i64"] = sse_memset;
+//    _func_map["__memset_chk"] = sse_memset;
+//    _func_map["memset_s"] = sse_memset_s;
+//    _func_map["llvm.memcpy.p0i8.p0i8.i64"] = sse_memcpy;
+//    _func_map["llvm.memmove.p0i8.p0i8.i64"] = sse_memcpy;
+//    _func_map["__memcpy_chk"] = sse_memcpy;
+//    _func_map["__memmove_chk"] = sse_memcpy;
+//    _func_map["memcpy_s"] = sse_memcpy_s;
+//    _func_map["wcsncpy"] = sse_memcpy;
+//    _func_map["wmemset"] = sse_memset;
+//    _func_map["strlen"] = sse_strlen;
+//    _func_map["wcslen"] = sse_wcslen;
+//    _func_map["strnlen"] = sse_strnlen;
+//    _func_map["__strcpy_chk"] = sse_strcpy;
+//    _func_map["strcpy"] = sse_strcpy;
+//    _func_map["wcscpy"] = sse_strcpy;
+//    _func_map["strncpy"] = sse_strncpy;
+//    _func_map["__strncpy_chk"] = sse_strncpy;
+//    _func_map["strtok"] = sse_strtok;
+//    _func_map["strdup"] = sse_strdup;
+//    _func_map["strchr"] = sse_strchr;
+//    _func_map["__strcat_chk"] = sse_strcat;
+//    _func_map["strcat"] = sse_strcat;
+//    _func_map["strcat_s"] = sse_strcat;
+//    _func_map["wcscat"] = sse_strcat;
+//    _func_map["strncat"] = sse_strncat;
+//    _func_map["wcsncat"] = sse_strncat;
+//    _func_map["__strncat_chk"] = sse_strncat;
 
 /*
    The functions in extapi.bc are named using two patterns:
@@ -67,9 +97,6 @@ extern void check_nullptr(void *ptr);
     sse_check_overflow(dst, src_len);     \
     sse_memcpy(dst, src, 0, src_len);
 
-#define SSE_STRLEN(src) \
-    int src_len = sse_get_alloc_length(src); \
-    return src_len;
 
 /// SSE STOP
 
@@ -366,6 +393,12 @@ void *svf_memmove_MEMCPY(void *str1, const void *str2, unsigned long n, int flag
     SSE_MEMCPY(str1, str2, n);
 }
 
+void svf_wcsncpy(wchar_t *str1, const wchar_t *str2, unsigned long n) {
+    SSE_MEMCPY(str1, str2, n);
+}
+
+
+
 extern void svf_bcopy_MEMCPY(const void *s1, void *s2, unsigned long n);
 
 extern void *svf_memccpy_MEMCPY( void * restrict dest, const void * restrict src, int c, unsigned long count);
@@ -403,8 +436,69 @@ char * svf___strcpy_chk_MEMCPY(char * dest, const char * src, unsigned long dest
     SSE_STRCPY(dest, src);
 }
 
+int svf_strlen(const char* dst) {
+    return sse_get_str_length(dst);
+}
 
-extern char * svf___strcat_chk_MEMCPY(char * dest, const char * src, unsigned long destlen);
+char* svf_strcat(char * dest, const char * src) {
+    int dst_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(dest);
+    sse_check_overflow(dest, dst_len + src_len);
+    sse_memcpy(dest, src, dst_len, src_len);
+}
+
+char* svf___strcat_chk(char * dest, const char * src) {
+    int dst_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(dest);
+    sse_check_overflow(dest, dst_len + src_len);
+    sse_memcpy(dest, src, dst_len, src_len);
+}
+
+wchar_t* svf___wcscat_chk(wchar_t * dest, const wchar_t * src) {
+    int dst_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(dest);
+    sse_check_overflow(dest, dst_len + src_len);
+    sse_memcpy(dest, src, dst_len, src_len);
+}
+
+char* svf_strncat(char *dest, const char *src, size_t n) {
+    int dst_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(dest);
+    if (src_len < n) {
+        sse_check_overflow(dest, dst_len + src_len);
+        sse_memcpy(dest, src, dst_len, src_len);
+    }
+    else {
+        sse_check_overflow(dest, dst_len + n);
+        sse_memcpy(dest, src, dst_len, n);
+    }
+}
+
+char* svf___strncat_chk(char *dest, const char *src, size_t n) {
+    int dst_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(dest);
+    if (src_len < n) {
+        sse_check_overflow(dest, dst_len + src_len);
+        sse_memcpy(dest, src, dst_len, src_len);
+    }
+    else {
+        sse_check_overflow(dest, dst_len + n);
+        sse_memcpy(dest, src, dst_len, n);
+    }
+}
+
+char* svf_wcsncat(wchar_t *dest, const wchar_t *src, size_t n) {
+    int dst_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(dest);
+    if (src_len < n) {
+        sse_check_overflow(dest, dst_len + src_len);
+        sse_memcpy(dest, src, dst_len, src_len);
+    }
+    else {
+        sse_check_overflow(dest, dst_len + n);
+        sse_memcpy(dest, src, dst_len, n);
+    }
+}
 
 extern char *svf_stpcpy_MEMCPY(char *restrict dst, const char *restrict src);
 
@@ -413,14 +507,18 @@ extern char *svf_strcat_MEMCPY(char *dest, const char *src);
 char *svf_strcpy_MEMCPY(char *dest, const char *src) {
     SSE_STRCPY(dest, src);
 }
-#include <stddef.h>
+
 char *svf_wcscpy(wchar_t* dest, const wchar_t* src) {
     SSE_STRCPY(dest, src);
 }
 
 extern char *svf_strncat_MEMCPY(char *dest, const char *src, unsigned long n);
 
- char *svf_strncpy_MEMCPY(char *dest, const char *src, unsigned long n) {
+char *svf_strncpy_MEMCPY(char *dest, const char *src, unsigned long n) {
+    SSE_MEMCPY(dest, src, n);
+}
+
+char *svf___strncpy_chk_MEMCPY(char *dest, const char *src, unsigned long n) {
     SSE_MEMCPY(dest, src, n);
 }
 
@@ -695,7 +793,6 @@ void svf_preserveExtFuncDeclarations()
     svf_llvm_memset_p0i8_i64_MEMSET(NULL, 'a', 0);
     svf___memset_chk_MEMSET(NULL, 'a', 0);
     svf___strcpy_chk_MEMCPY(NULL, NULL, 0);
-    svf___strcat_chk_MEMCPY(NULL, NULL, 0);
     svf_stpcpy_MEMCPY(NULL, NULL);
     svf_strcat_MEMCPY(NULL, NULL);
     svf_strcpy_MEMCPY(NULL, NULL);
