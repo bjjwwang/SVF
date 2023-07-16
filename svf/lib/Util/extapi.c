@@ -29,6 +29,49 @@
         MEMCPY,       // memset() operations
         OVERWRITE,    // svf extern function overwrite app function
 */
+/// SSE START
+
+/// check if ptr[sz] would cause buffer overflow
+extern void sse_check_overflow(void* ptr, int sz);
+
+/// get the length of string, if the elem of string is not for sure, return alloc length
+extern int sse_get_str_length(void* ptr);
+
+/// get the byte size of alloc size, if it is member of struct, just return the byte size of field
+extern int sse_get_alloc_length(void* ptr);
+
+/// set the lower bound and upper bound of a interval value
+extern int sse_set_interval(int val, int lb, int ub);
+
+/// copy a series of values in es table, arg: dst pointer, src pointer, the start idx of dst, and the size
+extern int sse_memcpy(void* dst, void* src, int start_idx, int size);
+
+/// set a series of values in es table, arg: dst pointer, src pointer, the element, and the size
+extern int sse_memset(void* dst, void* src, int elem, int size);
+
+/// check if ptr is null pointer
+extern void check_nullptr(void *ptr);
+
+#define SSE_MEMCPY(dst, src, sz) \
+    sse_check_overflow(dst, sz); \
+    sse_check_overflow(src, sz); \
+    sse_memcpy(dst, src, 0, sz);
+
+#define SSE_MEMSET(dst, elem, sz) \
+    sse_check_overflow(dst, sz); \
+    sse_memset(dst, elem, 0, sz);
+
+#define SSE_STRCPY(dst, src) \
+    int dst_len = sse_get_alloc_length(dst); \
+    int src_len = sse_get_alloc_length(src);  \
+    sse_check_overflow(dst, src_len);     \
+    sse_memcpy(dst, src, 0, src_len);
+
+#define SSE_STRLEN(src) \
+    int src_len = sse_get_alloc_length(src); \
+    return src_len;
+
+/// SSE STOP
 
 extern const unsigned short **svf___ctype_b_loc_STATIC_ALLOC_RET(void);
 
@@ -289,39 +332,70 @@ extern int svf_scandir_ALLOC_ARG1(const char *restrict dirp, struct dirent ***re
 extern int svf_XmbTextPropertyToTextList_ALLOC_ARG2(void *a, void *b, char ***c, int *d);
 
 //llvm.memcpy.p0i8.p0i8.i64
-extern void svf_llvm_memcpy_p0i8_p0i8_i64_MEMCPY(char* dst, char* src, int sz, int flag);
+void svf_llvm_memcpy_p0i8_p0i8_i64_MEMCPY(char* dst, char* src, int sz, int flag) {
+    SSE_MEMCPY(dst, src, sz);
+}
 
-extern void svf_llvm_memcpy_p0i8_p0i8_i32_MEMCPY(char* dst, char* src, int sz, int flag);
+void svf_llvm_memcpy_p0i8_p0i8_i32_MEMCPY(char* dst, char* src, int sz, int flag) {
+    SSE_MEMCPY(dst, src, sz);
+}
 
-extern void svf_llvm_memcpy_MEMCPY(char* dst, char* src, int sz, int flag);
+ void svf_llvm_memcpy_MEMCPY(char* dst, char* src, int sz, int flag) {
+    SSE_MEMCPY(dst, src, sz);
+}
 
-extern void svf_llvm_memmove_MEMCPY(char* dst, char* src, int sz, int flag);
+ void svf_llvm_memmove_MEMCPY(char* dst, char* src, int sz, int flag) {
+    SSE_MEMCPY(dst, src, sz);
+}
 
-extern void svf_llvm_memmove_p0i8_p0i8_i64_MEMCPY(char* dst, char* src, int sz, int flag);
+ void svf_llvm_memmove_p0i8_p0i8_i64_MEMCPY(char* dst, char* src, int sz, int flag) {
+    SSE_MEMCPY(dst, src, sz);
+}
 
-extern void svf_llvm_memmove_p0i8_p0i8_i32_MEMCPY(char* dst, char* src, int sz, int flag);
+ void svf_llvm_memmove_p0i8_p0i8_i32_MEMCPY(char* dst, char* src, int sz, int flag) {
+    SSE_MEMCPY(dst, src, sz);
+}
 
-extern void svf___memcpy_chk_MEMCPY(char* dst, char* src, int sz, int flag);
+ void svf___memcpy_chk_MEMCPY(char* dst, char* src, int sz, int flag) {
+    SSE_MEMCPY(dst, src, sz);
+}
 
-extern void *svf_memmove_MEMCPY(void *str1, const void *str2, unsigned long n);
+ void *svf_memmove_MEMCPY(void *str1, const void *str2, unsigned long n, int flag) {
+    SSE_MEMCPY(str1, str2, n);
+}
 
 extern void svf_bcopy_MEMCPY(const void *s1, void *s2, unsigned long n);
 
 extern void *svf_memccpy_MEMCPY( void * restrict dest, const void * restrict src, int c, unsigned long count);
 
-extern void svf___memmove_chk_MEMCPY(char* dst, char* src, int sz);
+void svf___memmove_chk_MEMCPY(char* dst, char* src, int sz, int flag) {
+    SSE_MEMCPY(dst, src, sz);
+}
 
-extern void svf_llvm_memset_MEMSET(char* dst, char elem, int sz);
 
-extern void svf_llvm_memset_p0i8_i32_MEMSET(char* dst, char elem, int sz);
+ void svf_llvm_memset_MEMSET(char* dst, char elem, int sz) {
+    SSE_MEMSET(dst, elem, sz);
+}
 
-extern void svf_llvm_memset_p0i8_i64_MEMSET(char* dst, char elem, int sz);
+ void svf_llvm_memset_p0i8_i32_MEMSET(char* dst, char elem, int sz) {
+    SSE_MEMSET(dst, elem, sz);
+}
 
-extern void svf_MEMSET(char* dst, char elem, int sz);
+ void svf_llvm_memset_p0i8_i64_MEMSET(char* dst, char elem, int sz) {
+    SSE_MEMSET(dst, elem, sz);
+}
 
-extern char * svf___memset_chk_MEMSET(char * dest, const char * src, unsigned long destlen);
+ void svf_MEMSET(char* dst, char elem, int sz) {
+    SSE_MEMSET(dst, elem, sz);
+}
 
-char * svf___strcpy_chk_MEMCPY(char * dest, const char * src, unsigned long destlen);
+ char * svf___memset_chk_MEMSET(char * dest, char elem, unsigned long destlen) {
+    SSE_MEMSET(dest, elem, destlen);
+}
+
+char * svf___strcpy_chk_MEMCPY(char * dest, const char * src, unsigned long destlen) {
+    SSE_STRCPY(dest, src);
+}
 
 extern char * svf___strcat_chk_MEMCPY(char * dest, const char * src, unsigned long destlen);
 
@@ -329,17 +403,21 @@ extern char *svf_stpcpy_MEMCPY(char *restrict dst, const char *restrict src);
 
 extern char *svf_strcat_MEMCPY(char *dest, const char *src);
 
-extern char *svf_strcpy_MEMCPY(char *dest, const char *src);
+ char *svf_strcpy_MEMCPY(char *dest, const char *src) {
+    SSE_STRCPY(dest, src);
+}
 
 extern char *svf_strncat_MEMCPY(char *dest, const char *src, unsigned long n);
 
-extern char *svf_strncpy_MEMCPY(char *dest, const char *src, unsigned long n);
+ char *svf_strncpy_MEMCPY(char *dest, const char *src, unsigned long n) {
+    SSE_MEMCPY(dest, src, n);
+}
 
 extern unsigned long svf_iconv_MEMCPY(void* cd, char **restrict inbuf, unsigned long *restrict inbytesleft, char **restrict outbuf, unsigned long *restrict outbytesleft);
 
 extern void* svf__ZNSt5arrayIPK1ALm2EE4backEv_OVERWRITE(void *arg);
 
-extern void * svf___rawmemchr(const void * s, int c)
+ void * svf___rawmemchr(const void * s, int c)
 {
     return (void *)s;
 }
@@ -597,14 +675,14 @@ void svf_preserveExtFuncDeclarations()
     svf_llvm_memmove_p0i8_p0i8_i64_MEMCPY(NULL, NULL, 0, 0);
     svf_llvm_memmove_p0i8_p0i8_i32_MEMCPY(NULL, NULL, 0, 0);
     svf___memcpy_chk_MEMCPY(NULL, NULL, 0, 0);
-    svf_memmove_MEMCPY(NULL, NULL, 0);
+    svf_memmove_MEMCPY(NULL, NULL, 0, 0);
     svf_bcopy_MEMCPY(NULL, NULL, 0);
     svf_memccpy_MEMCPY(NULL, NULL, 0, 0);
-    svf___memmove_chk_MEMCPY(NULL, NULL, 0);
+    svf___memmove_chk_MEMCPY(NULL, NULL, 0, 0);
     svf_llvm_memset_MEMSET(NULL, 'a', 0);
     svf_llvm_memset_p0i8_i32_MEMSET(NULL, 'a', 0);
     svf_llvm_memset_p0i8_i64_MEMSET(NULL, 'a', 0);
-    svf___memset_chk_MEMSET(NULL, NULL, 0);
+    svf___memset_chk_MEMSET(NULL, 'a', 0);
     svf___strcpy_chk_MEMCPY(NULL, NULL, 0);
     svf___strcat_chk_MEMCPY(NULL, NULL, 0);
     svf_stpcpy_MEMCPY(NULL, NULL);
