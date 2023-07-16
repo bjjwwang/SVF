@@ -391,6 +391,10 @@ void svf___memmove_chk_MEMCPY(char* dst, char* src, int sz, int flag) {
     SSE_MEMSET(dst, elem, sz);
 }
 
+void svf_wmemset(char* dst, char elem, int sz) {
+    SSE_MEMSET(dst, elem, sz);
+}
+
  char * svf___memset_chk_MEMSET(char * dest, char elem, unsigned long destlen) {
     SSE_MEMSET(dest, elem, destlen);
 }
