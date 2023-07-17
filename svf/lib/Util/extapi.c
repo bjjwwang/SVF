@@ -414,29 +414,29 @@ void svf___memmove_chk_MEMCPY(char* dst, char* src, int sz, int flag) {
     SSE_MEMCPY(dst, src, sz);
 }
 
-
- void svf_llvm_memset_MEMSET(char* dst, char elem, int sz) {
+ void svf_llvm_memset_MEMSET(char* dst, char elem, int sz, int flag) {
     SSE_MEMSET(dst, elem, sz);
 }
 
- void svf_llvm_memset_p0i8_i32_MEMSET(char* dst, char elem, int sz, bool immarg) {
+ void svf_llvm_memset_p0i8_i32_MEMSET(char* dst, char elem, int sz, int flag) {
     SSE_MEMSET(dst, elem, sz);
 }
 
- void svf_llvm_memset_p0i8_i64_MEMSET(char* dst, char elem, int sz, bool immarg) {
+ void svf_llvm_memset_p0i8_i64_MEMSET(char* dst, char elem, int sz, int flag) {
     SSE_MEMSET(dst, elem, sz);
 }
 
- void svf_MEMSET(char* dst, char elem, int sz) {
+ void svf_MEMSET(char* dst, char elem, int sz, int flag) {
     SSE_MEMSET(dst, elem, sz);
 }
+
+char * svf___memset_chk_MEMSET(char * dest, int c, unsigned long destlen, int flag) {
+    SSE_MEMSET(dest, c, destlen);
+}
+
 
 void svf_wmemset(char* dst, char elem, int sz) {
     SSE_MEMSET(dst, elem, sz);
-}
-
- char * svf___memset_chk_MEMSET(char * dest, char elem, unsigned long destlen) {
-    SSE_MEMSET(dest, elem, destlen);
 }
 
 char * svf___strcpy_chk_MEMCPY(char * dest, const char * src, unsigned long destlen) {
@@ -802,10 +802,11 @@ void svf_preserveExtFuncDeclarations()
     svf_bcopy_MEMCPY(NULL, NULL, 0);
     svf_memccpy_MEMCPY(NULL, NULL, 0, 0);
     svf___memmove_chk_MEMCPY(NULL, NULL, 0, 0);
-    svf_llvm_memset_MEMSET(NULL, 'a', 0);
-    svf_llvm_memset_p0i8_i32_MEMSET(NULL, 'a', 0, false);
-    svf_llvm_memset_p0i8_i64_MEMSET(NULL, 'a', 0, false);
-    svf___memset_chk_MEMSET(NULL, 'a', 0);
+    svf_llvm_memset_MEMSET(NULL, 'a', 0, 0);
+    svf_llvm_memset_p0i8_i32_MEMSET(NULL, 'a', 0, 0);
+    svf_llvm_memset_p0i8_i64_MEMSET(NULL, 'a', 0, 0);
+    svf_MEMSET(NULL, 'a', 0, 0);
+    svf___memset_chk_MEMSET(NULL, 'a', 0, 0);
     svf___strcpy_chk_MEMCPY(NULL, NULL, 0);
     svf_stpcpy_MEMCPY(NULL, NULL);
     svf_strcat_MEMCPY(NULL, NULL);
