@@ -1,5 +1,6 @@
 #define NULL ((void *)0)
 #include <stddef.h>
+#include <stdbool.h>
 
 //    _func_map["llvm.memset.p0i8.i64"] = sse_memset;
 //    _func_map["__memset_chk"] = sse_memset;
@@ -418,11 +419,11 @@ void svf___memmove_chk_MEMCPY(char* dst, char* src, int sz, int flag) {
     SSE_MEMSET(dst, elem, sz);
 }
 
- void svf_llvm_memset_p0i8_i32_MEMSET(char* dst, char elem, int sz) {
+ void svf_llvm_memset_p0i8_i32_MEMSET(char* dst, char elem, int sz, bool immarg) {
     SSE_MEMSET(dst, elem, sz);
 }
 
- void svf_llvm_memset_p0i8_i64_MEMSET(char* dst, char elem, int sz) {
+ void svf_llvm_memset_p0i8_i64_MEMSET(char* dst, char elem, int sz, bool immarg) {
     SSE_MEMSET(dst, elem, sz);
 }
 
@@ -802,8 +803,8 @@ void svf_preserveExtFuncDeclarations()
     svf_memccpy_MEMCPY(NULL, NULL, 0, 0);
     svf___memmove_chk_MEMCPY(NULL, NULL, 0, 0);
     svf_llvm_memset_MEMSET(NULL, 'a', 0);
-    svf_llvm_memset_p0i8_i32_MEMSET(NULL, 'a', 0);
-    svf_llvm_memset_p0i8_i64_MEMSET(NULL, 'a', 0);
+    svf_llvm_memset_p0i8_i32_MEMSET(NULL, 'a', 0, false);
+    svf_llvm_memset_p0i8_i64_MEMSET(NULL, 'a', 0, false);
     svf___memset_chk_MEMSET(NULL, 'a', 0);
     svf___strcpy_chk_MEMCPY(NULL, NULL, 0);
     svf_stpcpy_MEMCPY(NULL, NULL);
