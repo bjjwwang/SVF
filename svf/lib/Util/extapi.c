@@ -449,35 +449,35 @@ int svf_strlen(const char* dst) {
 
 char* svf_strcat(char * dest, const char * src) {
     int dst_len = sse_get_str_length(dest);
-    int src_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(src);
     sse_check_overflow(dest, dst_len + src_len);
     sse_memcpy(dest, src, dst_len, src_len);
 }
 
 char* svf___strcat_chk(char * dest, const char * src, long long int flag) {
     int dst_len = sse_get_str_length(dest);
-    int src_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(src);
     sse_check_overflow(dest, dst_len + src_len);
     sse_memcpy(dest, src, dst_len, src_len);
 }
 
 wchar_t* svf___wcscat_chk(wchar_t * dest, const wchar_t * src) {
     int dst_len = sse_get_str_length(dest) * sizeof(wchar_t);
-    int src_len = sse_get_str_length(dest) * sizeof(wchar_t);
+    int src_len = sse_get_str_length(src) * sizeof(wchar_t);
     sse_check_overflow(dest, dst_len + src_len);
     sse_memcpy(dest, src, dst_len, src_len);
 }
 
 wchar_t* svf_wcscat(wchar_t * dest, const wchar_t * src) {
     int dst_len = sse_get_str_length(dest) * sizeof(wchar_t);
-    int src_len = sse_get_str_length(dest) * sizeof(wchar_t);
+    int src_len = sse_get_str_length(src) * sizeof(wchar_t);
     sse_check_overflow(dest, dst_len + src_len);
     sse_memcpy(dest, src, dst_len, src_len);
 }
 
 char* svf_strncat(char *dest, const char *src, size_t n) {
     int dst_len = sse_get_str_length(dest);
-    int src_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(src);
     if (src_len < n) {
         sse_check_overflow(dest, dst_len + src_len);
         sse_memcpy(dest, src, dst_len, src_len);
@@ -490,7 +490,7 @@ char* svf_strncat(char *dest, const char *src, size_t n) {
 
 char* svf___strncat_chk(char *dest, const char *src, size_t n) {
     int dst_len = sse_get_str_length(dest);
-    int src_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(src);
     if (src_len < n) {
         sse_check_overflow(dest, dst_len + src_len);
         sse_memcpy(dest, src, dst_len, src_len);
@@ -503,7 +503,7 @@ char* svf___strncat_chk(char *dest, const char *src, size_t n) {
 
 char* svf_wcsncat(wchar_t *dest, const wchar_t *src, size_t n) {
     int dst_len = sse_get_str_length(dest) * sizeof(wchar_t);
-    int src_len = sse_get_str_length(dest) * sizeof(wchar_t);
+    int src_len = sse_get_str_length(src) * sizeof(wchar_t);
     if (src_len < n) {
         sse_check_overflow(dest, dst_len + src_len);
         sse_memcpy(dest, src, dst_len, src_len);

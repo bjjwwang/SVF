@@ -163,7 +163,8 @@ void LLVMModuleSet::createSVFDataStructure()
         /// Function
         for (Function& func : mod.functions())
         {
-            if (func.isDeclaration() && (FunDefToDeclsMap.find(&func) != FunDefToDeclsMap.end() || mod.getName().str() != Options::ExtAPIInput()))
+            //if (func.isDeclaration() && (FunDefToDeclsMap.find(&func) != FunDefToDeclsMap.end() || mod.getName().str() != Options::ExtAPIInput()))
+            if (func.isDeclaration())
             {
                 /// if this function is declaration
                 candidateDecls.push_back(&func);

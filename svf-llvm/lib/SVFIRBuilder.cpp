@@ -724,11 +724,6 @@ void SVFIRBuilder::visitCastInst(CastInst &inst)
     DBOUT(DPAGBuild, outs() << "process cast  " << LLVMModuleSet::getLLVMModuleSet()->getSVFValue(&inst)->toString() << " \n");
     NodeID dst = getValueNode(&inst);
 
-    if (SVFUtil::isa<IntToPtrInst>(&inst))
-    {
-        addBlackHoleAddrEdge(dst);
-    }
-    else
     {
         const Value* opnd = inst.getOperand(0);
         if (!SVFUtil::isa<PointerType>(opnd->getType()))
