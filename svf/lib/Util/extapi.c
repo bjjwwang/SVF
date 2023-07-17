@@ -97,6 +97,12 @@ extern void check_nullptr(void *ptr);
     sse_check_overflow(dst, src_len);     \
     sse_memcpy(dst, src, 0, src_len);
 
+#define SSE_WCSCPY(dst, src) \
+    int dst_len = sse_get_alloc_length(dst); \
+    int src_len = sse_get_alloc_length(src); \
+    sse_check_overflow(dst, src_len);     \
+    sse_memcpy(dst, src, 0, src_len);
+
 
 /// SSE STOP
 
@@ -447,7 +453,7 @@ char* svf_strcat(char * dest, const char * src) {
     sse_memcpy(dest, src, dst_len, src_len);
 }
 
-char* svf___strcat_chk(char * dest, const char * src) {
+char* svf___strcat_chk(char * dest, const char * src, long long int flag) {
     int dst_len = sse_get_str_length(dest);
     int src_len = sse_get_str_length(dest);
     sse_check_overflow(dest, dst_len + src_len);
@@ -455,8 +461,15 @@ char* svf___strcat_chk(char * dest, const char * src) {
 }
 
 wchar_t* svf___wcscat_chk(wchar_t * dest, const wchar_t * src) {
-    int dst_len = sse_get_str_length(dest);
-    int src_len = sse_get_str_length(dest);
+    int dst_len = sse_get_str_length(dest) * sizeof(wchar_t);
+    int src_len = sse_get_str_length(dest) * sizeof(wchar_t);
+    sse_check_overflow(dest, dst_len + src_len);
+    sse_memcpy(dest, src, dst_len, src_len);
+}
+
+wchar_t* svf_wcscat(wchar_t * dest, const wchar_t * src) {
+    int dst_len = sse_get_str_length(dest) * sizeof(wchar_t);
+    int src_len = sse_get_str_length(dest) * sizeof(wchar_t);
     sse_check_overflow(dest, dst_len + src_len);
     sse_memcpy(dest, src, dst_len, src_len);
 }
@@ -488,8 +501,8 @@ char* svf___strncat_chk(char *dest, const char *src, size_t n) {
 }
 
 char* svf_wcsncat(wchar_t *dest, const wchar_t *src, size_t n) {
-    int dst_len = sse_get_str_length(dest);
-    int src_len = sse_get_str_length(dest);
+    int dst_len = sse_get_str_length(dest) * sizeof(wchar_t);
+    int src_len = sse_get_str_length(dest) * sizeof(wchar_t);
     if (src_len < n) {
         sse_check_overflow(dest, dst_len + src_len);
         sse_memcpy(dest, src, dst_len, src_len);
@@ -509,7 +522,7 @@ char *svf_strcpy_MEMCPY(char *dest, const char *src) {
 }
 
 char *svf_wcscpy(wchar_t* dest, const wchar_t* src) {
-    SSE_STRCPY(dest, src);
+    SSE_WCSCPY(dest, src);
 }
 
 extern char *svf_strncat_MEMCPY(char *dest, const char *src, unsigned long n);
