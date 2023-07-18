@@ -450,14 +450,14 @@ int svf_strlen(const char* dst) {
 char* svf_strcat(char * dest, const char * src) {
     int dst_len = sse_get_str_length(dest);
     int src_len = sse_get_str_length(src);
-    sse_check_overflow(dest, dst_len + src_len);
+    sse_check_overflow(dest, dst_len + src_len + 1);
     sse_memcpy(dest, src, dst_len, src_len);
 }
 
 char* svf___strcat_chk(char * dest, const char * src, long long int flag) {
     int dst_len = sse_get_str_length(dest);
     int src_len = sse_get_str_length(src);
-    sse_check_overflow(dest, dst_len + src_len);
+    sse_check_overflow(dest, dst_len + src_len + 1);
     sse_memcpy(dest, src, dst_len, src_len);
 }
 
