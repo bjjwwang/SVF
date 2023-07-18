@@ -488,7 +488,7 @@ char* svf_strncat(char *dest, const char *src, size_t n) {
     }
 }
 
-char* svf___strncat_chk(char *dest, const char *src, size_t n) {
+char* svf___strncat_chk(char *dest, const char *src, size_t n, int flag) {
     int dst_len = sse_get_str_length(dest);
     int src_len = sse_get_str_length(src);
     if (src_len < n) {
