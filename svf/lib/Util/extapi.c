@@ -464,14 +464,14 @@ char* svf___strcat_chk(char * dest, const char * src, long long int flag) {
 wchar_t* svf___wcscat_chk(wchar_t * dest, const wchar_t * src) {
     int dst_len = sse_get_str_length(dest) * sizeof(wchar_t);
     int src_len = sse_get_str_length(src) * sizeof(wchar_t);
-    sse_check_overflow(dest, dst_len + src_len);
+    sse_check_overflow(dest, dst_len + src_len + 1);
     sse_memcpy(dest, src, dst_len, src_len);
 }
 
 wchar_t* svf_wcscat(wchar_t * dest, const wchar_t * src) {
     int dst_len = sse_get_str_length(dest) * sizeof(wchar_t);
     int src_len = sse_get_str_length(src) * sizeof(wchar_t);
-    sse_check_overflow(dest, dst_len + src_len);
+    sse_check_overflow(dest, dst_len + src_len + 1);
     sse_memcpy(dest, src, dst_len, src_len);
 }
 
@@ -479,11 +479,11 @@ char* svf_strncat(char *dest, const char *src, size_t n) {
     int dst_len = sse_get_str_length(dest);
     int src_len = sse_get_str_length(src);
     if (src_len < n) {
-        sse_check_overflow(dest, dst_len + src_len);
+        sse_check_overflow(dest, dst_len + src_len + 1);
         sse_memcpy(dest, src, dst_len, src_len);
     }
     else {
-        sse_check_overflow(dest, dst_len + n);
+        sse_check_overflow(dest, dst_len + n + 1);
         sse_memcpy(dest, src, dst_len, n);
     }
 }
@@ -492,11 +492,11 @@ char* svf___strncat_chk(char *dest, const char *src, size_t n, int flag) {
     int dst_len = sse_get_str_length(dest);
     int src_len = sse_get_str_length(src);
     if (src_len < n) {
-        sse_check_overflow(dest, dst_len + src_len);
+        sse_check_overflow(dest, dst_len + src_len + 1);
         sse_memcpy(dest, src, dst_len, src_len);
     }
     else {
-        sse_check_overflow(dest, dst_len + n);
+        sse_check_overflow(dest, dst_len + n + 1);
         sse_memcpy(dest, src, dst_len, n);
     }
 }
@@ -505,18 +505,23 @@ char* svf_wcsncat(wchar_t *dest, const wchar_t *src, size_t n) {
     int dst_len = sse_get_str_length(dest) * sizeof(wchar_t);
     int src_len = sse_get_str_length(src) * sizeof(wchar_t);
     if (src_len < n) {
-        sse_check_overflow(dest, dst_len + src_len);
+        sse_check_overflow(dest, dst_len + src_len + 1);
         sse_memcpy(dest, src, dst_len, src_len);
     }
     else {
-        sse_check_overflow(dest, dst_len + n);
+        sse_check_overflow(dest, dst_len + n + 1);
         sse_memcpy(dest, src, dst_len, n);
     }
 }
 
 extern char *svf_stpcpy_MEMCPY(char *restrict dst, const char *restrict src);
 
-extern char *svf_strcat_MEMCPY(char *dest, const char *src);
+extern char *svf_strcat_MEMCPY(char *dest, const char *src) {
+    int dst_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(src);
+    sse_check_overflow(dest, dst_len + src_len + 1);
+    sse_memcpy(dest, src, dst_len, src_len);
+}
 
 char *svf_strcpy_MEMCPY(char *dest, const char *src) {
     SSE_STRCPY(dest, src);
@@ -526,7 +531,18 @@ char *svf_wcscpy(wchar_t* dest, const wchar_t* src) {
     SSE_WCSCPY(dest, src);
 }
 
-extern char *svf_strncat_MEMCPY(char *dest, const char *src, unsigned long n);
+extern char *svf_strncat_MEMCPY(char *dest, const char *src, unsigned long n) {
+    int dst_len = sse_get_str_length(dest);
+    int src_len = sse_get_str_length(src);
+    if (src_len < n) {
+        sse_check_overflow(dest, dst_len + src_len + 1);
+        sse_memcpy(dest, src, dst_len, src_len);
+    }
+    else {
+        sse_check_overflow(dest, dst_len + n + 1);
+        sse_memcpy(dest, src, dst_len, n);
+    }
+}
 
 char *svf_strncpy_MEMCPY(char *dest, const char *src, unsigned long n) {
     SSE_MEMCPY(dest, src, n);
