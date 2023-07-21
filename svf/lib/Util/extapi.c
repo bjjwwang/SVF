@@ -72,7 +72,7 @@ extern int sse_get_str_length(void* ptr);
 extern int sse_get_alloc_length(void* ptr);
 
 /// set the lower bound and upper bound of a interval value
-extern int sse_set_interval(int val, int lb, int ub);
+extern int sse_set_interval(int lb, int ub);
 
 /// copy a series of values in es table, arg: dst pointer, src pointer, the start idx of dst, and the size
 extern int sse_memcpy(void* dst, void* src, int start_idx, int size);
@@ -93,18 +93,21 @@ extern void check_nullptr(void *ptr);
     sse_memset(dst, elem, 0, sz);
 
 #define SSE_STRCPY(dst, src) \
-    int dst_len = sse_get_alloc_length(dst); \
-    int src_len = sse_get_alloc_length(src);  \
+    int src_len = sse_get_str_length(src);  \
     sse_check_overflow(dst, src_len);     \
     sse_memcpy(dst, src, 0, src_len);
 
 #define SSE_WCSCPY(dst, src) \
-    int dst_len = sse_get_alloc_length(dst); \
-    int src_len = sse_get_alloc_length(src); \
-    sse_check_overflow(dst, src_len);     \
+    int src_len = sse_get_str_length(src); \
+    sse_check_overflow(dst, src_len * sizeof(wchar_t) + 1);     \
     sse_memcpy(dst, src, 0, src_len);
 
 
+
+long long int svf___recv(int socket, char* buf, long long int size, int flag) {
+    sse_check_overflow(buf, size);
+    return sse_set_interval(0, size);
+}
 /// SSE STOP
 
 extern const unsigned short **svf___ctype_b_loc_STATIC_ALLOC_RET(void);
@@ -349,6 +352,11 @@ extern int svf_asprintf_ALLOC_ARG0(char **restrict strp, const char *restrict fm
 
 extern int svf_vasprintf_ALLOC_ARG0(char **strp, const char *fmt, void* ap);
 
+int svf_swprintf(wchar_t *wcs, size_t maxlen, const wchar_t *format, ...) {
+    sse_check_overflow(wcs, maxlen * sizeof(wchar_t));
+}
+
+
 extern int svf_db_create_ALLOC_ARG0(void **dbp, void *dbenv, unsigned int flags);
 
 extern int svf_gnutls_pkcs12_bag_init_ALLOC_ARG0(void *a);
@@ -364,6 +372,7 @@ extern int svf_posix_memalign_ALLOC_ARG0(void **a, unsigned long b, unsigned lon
 extern int svf_scandir_ALLOC_ARG1(const char *restrict dirp, struct dirent ***restrict namelist, int (*filter)(const struct dirent *), int (*compar)(const struct dirent **, const struct dirent **));
 
 extern int svf_XmbTextPropertyToTextList_ALLOC_ARG2(void *a, void *b, char ***c, int *d);
+
 
 //llvm.memcpy.p0i8.p0i8.i64
 void svf_llvm_memcpy_p0i8_p0i8_i64_MEMCPY(char* dst, char* src, int sz, int flag) {
@@ -444,6 +453,10 @@ char * svf___strcpy_chk_MEMCPY(char * dest, const char * src, unsigned long dest
 }
 
 int svf_strlen(const char* dst) {
+    return sse_get_str_length(dst);
+}
+
+int svf_wcslen(const char* dst) {
     return sse_get_str_length(dst);
 }
 

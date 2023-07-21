@@ -856,7 +856,9 @@ void LLVMModuleSet::buildFunToFunMap()
             std::string svfExtName = "svf_";
             svfExtName.reserve(svfExtName.size() + declName.size());
             svfExtName.append(declName);
-            std::replace(svfExtName.begin(), svfExtName.end(), '.', '_');
+            std::replace_if(svfExtName.begin(), svfExtName.end(), [](char c) {
+                return !(std::isalpha(c) || std::isdigit(c));
+            }, '_');
             if ((fdecl->arg_size() == extfun->arg_size() || (fdecl->isVarArg() && extfun->isVarArg()))
                 && ((extfun->getName().str().length() == svfExtName.length() && extfun->getName().str().compare(svfExtName) == 0) || 
                     (extfun->getName().str().length() > svfExtName.length() && extfun->getName().str().find(svfExtName + "_") != std::string::npos)))
