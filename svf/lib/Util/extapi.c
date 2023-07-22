@@ -92,6 +92,10 @@ extern void check_nullptr(void *ptr);
     sse_check_overflow(dst, sz); \
     sse_memset(dst, elem, 0, sz);
 
+#define SSE_WMEMSET(dst, elem, sz) \
+    sse_check_overflow(dst, sz * sizeof(wchar_t)); \
+    sse_memset(dst, elem, 0, sz);
+
 #define SSE_STRCPY(dst, src) \
     int src_len = sse_get_str_length(src);  \
     sse_check_overflow(dst, src_len + 1);     \
@@ -105,6 +109,11 @@ extern void check_nullptr(void *ptr);
 
 
 long long int svf___recv(int socket, char* buf, long long int size, int flag) {
+    sse_check_overflow(buf, size);
+    return sse_set_interval(0, size);
+}
+
+long long int svf_recv(int socket, char* buf, long long int size, int flag) {
     sse_check_overflow(buf, size);
     return sse_set_interval(0, size);
 }
@@ -445,7 +454,7 @@ char * svf___memset_chk_MEMSET(char * dest, int c, unsigned long destlen, int fl
 
 
 void svf_wmemset(char* dst, char elem, int sz) {
-    SSE_MEMSET(dst, elem, sz);
+    SSE_WMEMSET(dst, elem, sz);
 }
 
 char * svf___strcpy_chk_MEMCPY(char * dest, const char * src, unsigned long destlen) {
