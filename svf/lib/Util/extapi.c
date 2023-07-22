@@ -94,12 +94,12 @@ extern void check_nullptr(void *ptr);
 
 #define SSE_STRCPY(dst, src) \
     int src_len = sse_get_str_length(src);  \
-    sse_check_overflow(dst, src_len);     \
+    sse_check_overflow(dst, src_len + 1);     \
     sse_memcpy(dst, src, 0, src_len);
 
 #define SSE_WCSCPY(dst, src) \
     int src_len = sse_get_str_length(src); \
-    sse_check_overflow(dst, src_len * sizeof(wchar_t) + 1);     \
+    sse_check_overflow(dst, src_len * sizeof(wchar_t) +  sizeof(wchar_t));     \
     sse_memcpy(dst, src, 0, src_len);
 
 
