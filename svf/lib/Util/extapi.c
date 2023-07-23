@@ -88,6 +88,11 @@ extern void check_nullptr(void *ptr);
     sse_check_overflow(src, sz); \
     sse_memcpy(dst, src, 0, sz);
 
+#define SSE_WMEMCPY(dst, src, sz) \
+    sse_check_overflow(dst, sz * sizeof(wchar_t)); \
+    sse_check_overflow(src, sz * sizeof(wchar_t)); \
+    sse_memcpy(dst, src, 0, sz);
+
 #define SSE_MEMSET(dst, elem, sz) \
     sse_check_overflow(dst, sz); \
     sse_memset(dst, elem, 0, sz);
@@ -419,7 +424,7 @@ void *svf_memmove_MEMCPY(void *str1, const void *str2, unsigned long n, int flag
 }
 
 void svf_wcsncpy(wchar_t *str1, const wchar_t *str2, unsigned long n) {
-    SSE_MEMCPY(str1, str2, n);
+    SSE_WMEMCPY(str1, str2, n);
 }
 
 
