@@ -370,6 +370,19 @@ int svf_swprintf(wchar_t *wcs, size_t maxlen, const wchar_t *format, ...) {
     sse_check_overflow(wcs, maxlen * sizeof(wchar_t));
 }
 
+void svf___snprintf_chk(char* str, size_t maxlen, ...) {
+    sse_check_overflow(str, maxlen * 1);
+}
+
+void svf_printLine(char* str) {
+    int sz = sse_get_str_length(str);
+    sse_check_overflow(str, sz);
+}
+
+void svf_printWLine(wchar_t* str) {
+    int sz = sse_get_str_length(str);
+    sse_check_overflow(str, sz*sizeof(wchar_t));
+}
 
 extern int svf_db_create_ALLOC_ARG0(void **dbp, void *dbenv, unsigned int flags);
 
@@ -426,8 +439,6 @@ void *svf_memmove_MEMCPY(void *str1, const void *str2, unsigned long n, int flag
 void svf_wcsncpy(wchar_t *str1, const wchar_t *str2, unsigned long n) {
     SSE_WMEMCPY(str1, str2, n);
 }
-
-
 
 extern void svf_bcopy_MEMCPY(const void *s1, void *s2, unsigned long n);
 
