@@ -536,7 +536,7 @@ char* svf_wcsncat(wchar_t *dest, const wchar_t *src, size_t n) {
         sse_memcpy(dest, src, dst_len, src_len);
     }
     else {
-        sse_check_overflow(dest, dst_len + n + 1);
+        sse_check_overflow(dest, dst_len + n * sizeof(wchar_t) + 1);
         sse_memcpy(dest, src, dst_len, n);
     }
 }
