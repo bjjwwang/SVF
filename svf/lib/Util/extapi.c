@@ -1,6 +1,7 @@
 #define NULL ((void *)0)
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
 //    _func_map["llvm.memset.p0i8.i64"] = sse_memset;
 //    _func_map["__memset_chk"] = sse_memset;
@@ -589,6 +590,40 @@ char *svf_strncpy_MEMCPY(char *dest, const char *src, unsigned long n) {
 char *svf___strncpy_chk_MEMCPY(char *dest, const char *src, unsigned long n) {
     SSE_MEMCPY(dest, src, n);
 }
+
+
+void copy_from_user(void *dst, void *src, unsigned sz) {
+    sse_check_overflow(dst, sz);
+    sse_check_overflow(src, sz);
+}
+
+void copy_to_user(void *dst, void *src, unsigned sz) {
+    sse_check_overflow(dst, sz);
+    sse_check_overflow(src, sz);
+}
+
+#define MAX_ARGC 5
+#define MAX_ARGV 512
+
+extern int main(int argc, char **argv);
+
+int svf__main() {
+    int argc = MAX_ARGC;
+    int idx = 0;
+
+    char **argv;
+    argv = (char **) malloc(MAX_ARGC * sizeof(char *));
+    argv[0] = (char *) malloc(MAX_ARGV * sizeof(char));
+    argv[1] = (char *) malloc(MAX_ARGV * sizeof(char));
+    argv[1][0] = 'a';
+    argv[1][1] = 'b';
+    argv[2] = (char *) malloc(MAX_ARGV * sizeof(char));
+    argv[3] = (char *) malloc(MAX_ARGV * sizeof(char));
+    argv[4] = (char *) malloc(MAX_ARGV * sizeof(char));
+    main(argc, argv);
+    return 0;
+}
+
 
 extern unsigned long svf_iconv_MEMCPY(void* cd, char **restrict inbuf, unsigned long *restrict inbytesleft, char **restrict outbuf, unsigned long *restrict outbytesleft);
 
