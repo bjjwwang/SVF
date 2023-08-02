@@ -532,6 +532,7 @@ private:
     /// add node into SVFIR
     //@{
     /// Add a value (pointer) node
+public:
     inline NodeID addValNode(const SVFValue* val, NodeID i)
     {
         SVFVar *node = new ValVar(val,i);
@@ -544,6 +545,7 @@ private:
         assert(mem->getId() == i && "not same object id?");
         return addFIObjNode(mem);
     }
+private:
     /// Add a unique return node for a procedure
     inline NodeID addRetNode(const SVFFunction* val, NodeID i)
     {

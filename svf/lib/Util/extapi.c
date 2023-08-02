@@ -544,11 +544,11 @@ char* svf_wcsncat(wchar_t *dest, const wchar_t *src, size_t n) {
     int dst_len = sse_get_str_length(dest) * sizeof(wchar_t);
     int src_len = sse_get_str_length(src) * sizeof(wchar_t);
     if (src_len < n) {
-        sse_check_overflow(dest, dst_len + src_len + 1);
+        sse_check_overflow(dest, dst_len + src_len);
         sse_memcpy(dest, src, dst_len, src_len);
     }
     else {
-        sse_check_overflow(dest, dst_len + n * sizeof(wchar_t) + 1);
+        sse_check_overflow(dest, dst_len + n * sizeof(wchar_t));
         sse_memcpy(dest, src, dst_len, n);
     }
 }
