@@ -452,6 +452,8 @@ std::vector<std::string> LLVMUtil::getFunAnnotations(const Function* fun)
         return annotations;
 
     ConstantArray *ca = SVFUtil::dyn_cast<ConstantArray>(glob->getInitializer());
+    if (ca == nullptr)
+        return annotations;
     for (unsigned i = 0; i < ca->getNumOperands(); ++i)
     {
         ConstantStruct *structAn = SVFUtil::dyn_cast<ConstantStruct>(ca->getOperand(i));

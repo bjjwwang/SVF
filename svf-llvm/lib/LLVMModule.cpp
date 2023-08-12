@@ -163,7 +163,8 @@ void LLVMModuleSet::createSVFDataStructure()
         {
             /// Remove unused function in extapi.bc module
             /// if this function func defined in extapi.bc but never used in application code (without any corresponding declared functions).
-            if (mod.getName().str() == Options::ExtAPIInput() && FunDefToDeclsMap.find(&func) == FunDefToDeclsMap.end() && func.getName().str() != "svf__main")
+            if (mod.getName().str() == Options::ExtAPIInput() && FunDefToDeclsMap.find(&func) == FunDefToDeclsMap.end()
+                && func.getName().str() != "svf__main" && func.getName().str().substr(0, 4) != "sse_")
             {
                 removedFuncList.push_back(&func);
                 continue;
