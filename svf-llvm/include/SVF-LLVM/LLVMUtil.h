@@ -116,13 +116,48 @@ inline bool isNullPtrSym(const Value* val)
     return SVFUtil::dyn_cast<ConstantPointerNull>(val);
 }
 
+static inline llvm::Type* getOpaquePointeeType(const llvm::Value* value) {
+    if (!value) return nullptr;
+
+    if (const auto* loadInst = llvm::dyn_cast<llvm::LoadInst>(value)) {
+        return loadInst->getType();
+    } else if (const auto* storeInst = llvm::dyn_cast<llvm::StoreInst>(value)) {
+        return storeInst->getValueOperand()->getType();
+    } else if (const auto* gepInst = llvm::dyn_cast<llvm::GetElementPtrInst>(value)) {
+        return gepInst->getSourceElementType();
+    } else if (const auto* callInst = llvm::dyn_cast<llvm::CallInst>(value)) {
+        return callInst->getFunctionType();
+    } else if (const auto* allocaInst = llvm::dyn_cast<llvm::AllocaInst>(value)) {
+        return allocaInst->getAllocatedType();
+    } else if (const auto* globalVar = llvm::dyn_cast<llvm::GlobalVariable>(value)) {
+        return globalVar->getValueType();
+    }
+    // ... handle Other Type
+
+    assert(false && "Unknown llvm Type, cannot get Ptr Element Type");
+    return nullptr;
+}
+
+
+
 static inline Type* getPtrElementType(const PointerType* pty)
 {
-#if (LLVM_VERSION_MAJOR < 14)
+#if (LLVM_VERSION_MAJOR <= 14)
     return pty->getPointerElementType();
 #else
     assert(!pty->isOpaque() && "Opaque Pointer is used, please recompile the source adding '-Xclang -no-opaque-pointers'");
     return pty->getNonOpaquePointerElementType();
+#endif
+}
+
+static inline Type* getPtrElementType(const llvm::Value* value) {
+#if (LLVM_VERSION_MAJOR <= 14)
+    if (const PointerType* ptrType = llvm::dyn_cast<llvm::PointerType>(value->getType())) {
+        return getPtrElementType(ptrType);
+    }
+    assert(false && "Value must be pointer type.");
+#else
+    return getOpaquePointeeType(value);
 #endif
 }
 
@@ -139,7 +174,7 @@ inline const PointerType *getRefTypeOfHeapAllocOrStatic(const CallBase* cs)
         int argPos = SVFUtil::getHeapAllocHoldingArgPosition(svfcs);
         const Value* arg = cs->getArgOperand(argPos);
         if (const PointerType *argType = SVFUtil::dyn_cast<PointerType>(arg->getType()))
-            refType = SVFUtil::dyn_cast<PointerType>(getPtrElementType(argType));
+            refType = SVFUtil::dyn_cast<PointerType>(getPtrElementType(arg));
     }
     // Case 2: heap object held by return value.
     else
@@ -383,6 +418,7 @@ void removeUnusedFuncsAndAnnotationsAndGlobalVariables(std::vector<Function*> re
 
 inline u32_t SVFType2ByteSize(const SVFType* type)
 {
+#if (LLVM_VERSION_MAJOR <= 14)
     const llvm::Type* llvm_rhs = LLVMModuleSet::getLLVMModuleSet()->getLLVMType(type);
     const llvm::PointerType* llvm_rhs_ptr = SVFUtil::dyn_cast<PointerType>(llvm_rhs);
     assert(llvm_rhs_ptr && "not a pointer type?");
@@ -399,6 +435,9 @@ inline u32_t SVFType2ByteSize(const SVFType* type)
         llvm_elem_size =llvm_rhs_size;
     }
     return llvm_elem_size;
+#else
+    assert(false && "SVF compiled by LLVM 15 or higher cannot use SVFType2ByteSize");
+#endif
 }
 
 /// Get the corresponding Function based on its name
