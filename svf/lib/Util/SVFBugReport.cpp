@@ -431,7 +431,6 @@ void SVFBugReport::dumpToJsonFile(const std::string& filePath) const
     /// Add program information
     jsonFile << "\"Time\": " << time << ",\n";
     jsonFile << "\"Memory\": \"" << mem << "\",\n";
-    jsonFile << "\"Coverage\": " << coverage << "\n";
 
     jsonFile << "}";
     jsonFile.close();
