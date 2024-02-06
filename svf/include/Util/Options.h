@@ -262,6 +262,18 @@ public:
     static const Option<u32_t> LoopBound;
 
     static const Option<bool> EnableOpaque;
+
+    // Abstract Execution
+    static const Option<u32_t> WidenDelay;
+    /// the max time consumptions (seconds). Default: 4 hours 14400s
+    static const Option<u32_t> Timeout;
+    /// bug info output file, Default: output.db
+    static const Option<std::string> OutputName;
+    /// open buffer overflow checker, Default: false
+    static const Option<bool> BufferOverflowCheck;
+    /// if the access index of gepstmt is unknown, skip it, Default: false
+    static const Option<bool> GepUnknownIdx;
+    static const Option<bool> RunUncallFuncs;
 };
 }  // namespace SVF
 
