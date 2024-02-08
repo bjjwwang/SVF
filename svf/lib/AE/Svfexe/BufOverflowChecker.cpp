@@ -55,7 +55,7 @@ std::string IntervalToIntStr(const IntervalValue& inv) {
 
 void BufOverflowChecker::handleSVFStatement(const SVFStmt *stmt)
 {
-    AE::handleSVFStatement(stmt);
+    AbstractExecution::handleSVFStatement(stmt);
     // for gep stmt, add the gep stmt to the addrToGep map
     if (const GepStmt *gep = SVFUtil::dyn_cast<GepStmt>(stmt)) {
         for (NodeID addrID: _svfir2ExeState->getAddrs(gep->getLHSVarID())) {
@@ -438,7 +438,7 @@ void BufOverflowCheckerAPI::handleExtAPI(const CallICFGNode *call) {
 
 
 void BufOverflowChecker::handleICFGNode(const SVF::ICFGNode *node) {
-    AE::handleICFGNode(node);
+    AbstractExecution::handleICFGNode(node);
     detectBufOverflow(node);
 }
 

@@ -657,7 +657,7 @@ int main(int argc, char** argv)
         ae.initExtAPI();
         ae.runOnModule(pag);
     } else {
-        AE ae;
+        AbstractExecution ae;
         ae.initExtAPI();
         ae.runOnModule(pag);
     }
