@@ -56,7 +56,7 @@ include_directories(${SVF_BINARY_DIR}/include/)
 
 # Install generated configuration header (see `configure_file()`) to top-level include dir of SVF
 install(
-  FILES ${SVF_BINARY_DIR}/include/Util/config.h
+  FILES ${SVF_BINARY_DIR}/include/SVF/Util/config.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/SVF/Util
 )
 
