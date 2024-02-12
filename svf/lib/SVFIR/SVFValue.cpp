@@ -1,5 +1,5 @@
-#include "SVFIR/SVFValue.h"
-#include "Util/SVFUtil.h"
+#include "SVF/SVFIR/SVFValue.h"
+#include "SVF/Util/SVFUtil.h"
 
 using namespace SVF;
 using namespace SVFUtil;

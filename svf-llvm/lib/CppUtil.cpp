@@ -29,7 +29,7 @@
 
 #include "SVF-LLVM/CppUtil.h"
 #include "SVF-LLVM/LLVMUtil.h"
-#include "Util/SVFUtil.h"
+#include "SVF/Util/SVFUtil.h"
 #include "SVF-LLVM/LLVMModule.h"
 #include "SVF-LLVM/ObjTypeInference.h"
 

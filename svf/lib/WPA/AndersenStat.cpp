@@ -27,9 +27,9 @@
  *      Author: Yulei Sui
  */
 
-#include "MemoryModel/PointerAnalysis.h"
-#include "WPA/WPAStat.h"
-#include "WPA/Andersen.h"
+#include "SVF/MemoryModel/PointerAnalysis.h"
+#include "SVF/WPA/WPAStat.h"
+#include "SVF/WPA/Andersen.h"
 
 using namespace SVF;
 using namespace SVFUtil;

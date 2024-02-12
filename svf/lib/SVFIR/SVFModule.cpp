@@ -21,11 +21,11 @@
 //===----------------------------------------------------------------------===//
 
 
-#include "SVFIR/SVFModule.h"
-#include "SVFIR/SymbolTableInfo.h"
-#include "Util/SVFUtil.h"
-#include "Util/SVFStat.h"
-#include "Util/Options.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/SVFIR/SymbolTableInfo.h"
+#include "SVF/Util/SVFUtil.h"
+#include "SVF/Util/SVFStat.h"
+#include "SVF/Util/Options.h"
 
 using namespace SVF;
 

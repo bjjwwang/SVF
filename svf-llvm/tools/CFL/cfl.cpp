@@ -32,8 +32,8 @@
 
 #include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/SVFIRBuilder.h"
-#include "CFL/CFLAlias.h"
-#include "CFL/CFLVF.h"
+#include "SVF/CFL/CFLAlias.h"
+#include "SVF/CFL/CFLVF.h"
 
 
 using namespace llvm;

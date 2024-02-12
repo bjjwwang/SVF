@@ -10,9 +10,9 @@
 
 #include "SVF-LLVM/BasicTypes.h"
 #include "SVF-LLVM/LLVMModule.h"
-#include "SVFIR/SVFValue.h"
-#include "Util/Annotator.h"
-#include "MTA/MHP.h"
+#include "SVF/SVFIR/SVFValue.h"
+#include "SVF/Util/Annotator.h"
+#include "SVF/MTA/MHP.h"
 
 namespace SVF
 {

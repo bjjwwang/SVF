@@ -27,16 +27,16 @@
  *      Author: Yulei Sui
  */
 
-#include "Util/Options.h"
-#include "SVFIR/SVFModule.h"
-#include "Util/SVFUtil.h"
+#include "SVF/Util/Options.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/Util/SVFUtil.h"
 
-#include "MemoryModel/PointerAnalysisImpl.h"
-#include "SVFIR/PAGBuilderFromFile.h"
-#include "Util/PTAStat.h"
-#include "Graphs/ThreadCallGraph.h"
-#include "Graphs/ICFG.h"
-#include "Util/CallGraphBuilder.h"
+#include "SVF/MemoryModel/PointerAnalysisImpl.h"
+#include "SVF/SVFIR/PAGBuilderFromFile.h"
+#include "SVF/Util/PTAStat.h"
+#include "SVF/Graphs/ThreadCallGraph.h"
+#include "SVF/Graphs/ICFG.h"
+#include "SVF/Util/CallGraphBuilder.h"
 
 #include <iomanip>
 #include <iostream>

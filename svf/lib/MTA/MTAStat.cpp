@@ -27,13 +27,13 @@
  *      Author: Yulei Sui, Peng Di
  */
 
-#include "Util/Options.h"
-#include "MTA/MTAStat.h"
-#include "MTA/TCT.h"
-#include "MTA/MHP.h"
-#include "MTA/LockAnalysis.h"
-#include "MTA/FSMPTA.h"
-#include "Graphs/ThreadCallGraph.h"
+#include "SVF/Util/Options.h"
+#include "SVF/MTA/MTAStat.h"
+#include "SVF/MTA/TCT.h"
+#include "SVF/MTA/MHP.h"
+#include "SVF/MTA/LockAnalysis.h"
+#include "SVF/MTA/FSMPTA.h"
+#include "SVF/Graphs/ThreadCallGraph.h"
 
 using namespace SVF;
 

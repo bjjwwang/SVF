@@ -27,8 +27,8 @@
  *
  */
 
-#include "AE/Core/IntervalExeState.h"
-#include "Util/SVFUtil.h"
+#include "SVF/AE/Core/IntervalExeState.h"
+#include "SVF/Util/SVFUtil.h"
 
 using namespace SVF;
 using namespace SVFUtil;

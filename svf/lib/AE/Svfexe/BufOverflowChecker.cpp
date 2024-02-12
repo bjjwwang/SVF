@@ -25,9 +25,9 @@
 // Created by Jiawei Wang on 2024/1/12.
 //
 
-#include "AE/Svfexe/BufOverflowChecker.h"
-#include "SVFIR/SVFType.h"
-#include "Util/Options.h"
+#include "SVF/AE/Svfexe/BufOverflowChecker.h"
+#include "SVF/SVFIR/SVFType.h"
+#include "SVF/Util/Options.h"
 #include <climits>
 
 namespace SVF

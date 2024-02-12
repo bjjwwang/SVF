@@ -30,8 +30,8 @@
 #ifndef INCLUDE_UTIL_ICFGBUILDER_H_
 #define INCLUDE_UTIL_ICFGBUILDER_H_
 
-#include "Graphs/ICFG.h"
-#include "Util/WorkList.h"
+#include "SVF/Graphs/ICFG.h"
+#include "SVF/Util/WorkList.h"
 #include "BasicTypes.h"
 
 namespace SVF

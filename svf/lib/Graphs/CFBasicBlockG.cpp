@@ -27,8 +27,8 @@
  *      Author: Xiao, Jiawei
  */
 
-#include "Graphs/CFBasicBlockG.h"
-#include "SVFIR/SVFIR.h"
+#include "SVF/Graphs/CFBasicBlockG.h"
+#include "SVF/SVFIR/SVFIR.h"
 
 namespace SVF
 {

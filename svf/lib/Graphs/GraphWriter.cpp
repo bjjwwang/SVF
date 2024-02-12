@@ -5,7 +5,7 @@
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 
-#include "Graphs/GraphWriter.h"
+#include "SVF/Graphs/GraphWriter.h"
 
 #include <string>
 

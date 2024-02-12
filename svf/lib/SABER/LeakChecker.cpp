@@ -27,8 +27,8 @@
  *      Author: Yulei Sui
  */
 
-#include "Util/Options.h"
-#include "SABER/LeakChecker.h"
+#include "SVF/Util/Options.h"
+#include "SVF/SABER/LeakChecker.h"
 
 using namespace SVF;
 using namespace SVFUtil;

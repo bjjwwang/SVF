@@ -26,9 +26,9 @@
  *  Created on: 17 Oct. 2023
  *      Author: Xiao, Jiawei
  */
-#include "Util/CFBasicBlockGBuilder.h"
+#include "SVF/Util/CFBasicBlockGBuilder.h"
 
-#include <SVFIR/SVFIR.h>
+#include "SVF/SVFIR/SVFIR.h"
 
 namespace SVF
 {

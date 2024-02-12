@@ -22,9 +22,9 @@
 
 #include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/SVFIRBuilder.h"
-#include "MTA/MTA.h"
-#include "Util/CommandLine.h"
-#include "Util/Options.h"
+#include "SVF/MTA/MTA.h"
+#include "SVF/Util/CommandLine.h"
+#include "SVF/Util/Options.h"
 #include "MTAResultValidator.h"
 #include "LockResultValidator.h"
 

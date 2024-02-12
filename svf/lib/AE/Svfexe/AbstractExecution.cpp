@@ -24,11 +24,11 @@
 //
 // Created by Jiawei Wang on 2024/1/10.
 //
-#include "WPA/Andersen.h"
-#include "Util/CFBasicBlockGBuilder.h"
-#include "SVFIR/SVFIR.h"
-#include "AE/Svfexe/AbstractExecution.h"
-#include "Util/Options.h"
+#include "SVF/WPA/Andersen.h"
+#include "SVF/Util/CFBasicBlockGBuilder.h"
+#include "SVF/SVFIR/SVFIR.h"
+#include "SVF/AE/Svfexe/AbstractExecution.h"
+#include "SVF/Util/Options.h"
 #include <cmath>
 
 using namespace SVF;

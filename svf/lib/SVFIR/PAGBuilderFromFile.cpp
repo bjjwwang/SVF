@@ -27,7 +27,7 @@
  *      Author: 136884
  */
 
-#include "SVFIR/PAGBuilderFromFile.h"
+#include "SVF/SVFIR/PAGBuilderFromFile.h"
 #include <fstream>	// for PAGBuilderFromFile
 #include <string>	// for PAGBuilderFromFile
 #include <sstream>	// for PAGBuilderFromFile

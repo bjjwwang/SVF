@@ -25,10 +25,10 @@
 // Created by JoelYang on 2023/4/19.
 //
 
-#include "Util/SVFBugReport.h"
+#include "SVF/Util/SVFBugReport.h"
 #include <cassert>
-#include "Util/cJSON.h"
-#include "Util/SVFUtil.h"
+#include "SVF/Util/cJSON.h"
+#include "SVF/Util/SVFUtil.h"
 #include <sstream>
 #include <fstream>
 

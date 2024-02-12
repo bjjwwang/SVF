@@ -1,4 +1,4 @@
-#include "SVFIR/SVFType.h"
+#include "SVF/SVFIR/SVFType.h"
 #include <sstream>
 
 namespace SVF

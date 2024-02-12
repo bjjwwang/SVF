@@ -27,9 +27,9 @@
  *      Author: Yulei Sui
  */
 
-#include "SVFIR/SVFStatements.h"
-#include "SVFIR/SVFIR.h"
-#include "Util/Options.h"
+#include "SVF/SVFIR/SVFStatements.h"
+#include "SVF/SVFIR/SVFIR.h"
+#include "SVF/Util/Options.h"
 
 using namespace SVF;
 using namespace SVFUtil;

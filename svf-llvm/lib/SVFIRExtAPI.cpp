@@ -28,7 +28,7 @@
  */
 
 #include "SVF-LLVM/SVFIRBuilder.h"
-#include "Util/SVFUtil.h"
+#include "SVF/Util/SVFUtil.h"
 #include "SVF-LLVM/SymbolTableBuilder.h"
 #include "SVF-LLVM/ObjTypeInference.h"
 

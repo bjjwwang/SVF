@@ -26,7 +26,7 @@
  *      Author: Jiawei Ren
  *
  */
-#include "AE/Core/RelationSolver.h"
+#include "SVF/AE/Core/RelationSolver.h"
 using namespace SVF;
 using namespace SVFUtil;
 

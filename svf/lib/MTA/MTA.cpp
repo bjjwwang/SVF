@@ -28,15 +28,15 @@
  *      Author: Yulei Sui, Peng Di
  */
 
-#include "Util/Options.h"
-#include "MTA/MTA.h"
-#include "MTA/MHP.h"
-#include "MTA/TCT.h"
-#include "MTA/LockAnalysis.h"
-#include "MTA/MTAStat.h"
-#include "WPA/Andersen.h"
-#include "MTA/FSMPTA.h"
-#include "Util/SVFUtil.h"
+#include "SVF/Util/Options.h"
+#include "SVF/MTA/MTA.h"
+#include "SVF/MTA/MHP.h"
+#include "SVF/MTA/TCT.h"
+#include "SVF/MTA/LockAnalysis.h"
+#include "SVF/MTA/MTAStat.h"
+#include "SVF/WPA/Andersen.h"
+#include "SVF/MTA/FSMPTA.h"
+#include "SVF/Util/SVFUtil.h"
 
 using namespace SVF;
 using namespace SVFUtil;

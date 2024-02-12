@@ -27,7 +27,7 @@
  *      Author: Yulei Sui
  */
 
-#include "Graphs/CHG.h"
+#include "SVF/Graphs/CHG.h"
 #include "SVF-LLVM/BasicTypes.h"
 
 namespace SVF

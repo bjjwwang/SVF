@@ -27,9 +27,9 @@
  *      Author: Pei Xu
  */
 
-#include "CFL/CFLGraphBuilder.h"
-#include "Util/Options.h"
-#include "SVFIR/SVFValue.h"
+#include "SVF/CFL/CFLGraphBuilder.h"
+#include "SVF/Util/Options.h"
+#include "SVF/SVFIR/SVFValue.h"
 
 namespace SVF
 {

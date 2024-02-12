@@ -27,8 +27,8 @@
  *      Author: Xiao Cheng
  */
 
-#include "Util/Options.h"
-#include "Util/SVFStat.h"
+#include "SVF/Util/Options.h"
+#include "SVF/Util/SVFStat.h"
 
 using namespace SVF;
 using namespace std;

@@ -28,10 +28,10 @@
 
 #include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/SVFIRBuilder.h"
-#include "WPA/WPAPass.h"
-#include "Util/CommandLine.h"
-#include "Util/Options.h"
-#include "SVFIR/SVFFileSystem.h"
+#include "SVF/WPA/WPAPass.h"
+#include "SVF/Util/CommandLine.h"
+#include "SVF/Util/Options.h"
+#include "SVF/SVFIR/SVFFileSystem.h"
 
 
 using namespace llvm;

@@ -8,7 +8,7 @@
 #ifndef MTARESULTVALIDATOR_H_
 #define MTARESULTVALIDATOR_H_
 
-#include "MTA/MHP.h"
+#include "SVF/MTA/MHP.h"
 #include "SVF-LLVM/LLVMUtil.h"
 
 /*!

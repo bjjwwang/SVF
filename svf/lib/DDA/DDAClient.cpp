@@ -30,12 +30,12 @@
  */
 
 
-#include "Util/Options.h"
-#include "Util/SVFUtil.h"
-#include "MemoryModel/PointsTo.h"
+#include "SVF/Util/Options.h"
+#include "SVF/Util/SVFUtil.h"
+#include "SVF/MemoryModel/PointsTo.h"
 
-#include "DDA/DDAClient.h"
-#include "DDA/FlowDDA.h"
+#include "SVF/DDA/DDAClient.h"
+#include "SVF/DDA/FlowDDA.h"
 #include <iostream>
 #include <iomanip>	// for std::setw
 

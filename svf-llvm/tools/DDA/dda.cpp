@@ -27,11 +27,11 @@
  */
 
 //#include "AliasUtil/AliasAnalysisCounter.h"
-//#include "MemoryModel/ComTypeModel.h"
+//#include "SVF/MemoryModel/ComTypeModel.h"
 #include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/SVFIRBuilder.h"
-#include "DDA/DDAPass.h"
-#include "Util/Options.h"
+#include "SVF/DDA/DDAPass.h"
+#include "SVF/Util/Options.h"
 
 using namespace llvm;
 using namespace SVF;

@@ -37,13 +37,13 @@
 #include <stack>
 
 #include "SVF-LLVM/CHGBuilder.h"
-#include "Util/Options.h"
+#include "SVF/Util/Options.h"
 #include "SVF-LLVM/CppUtil.h"
-#include "SVFIR/SymbolTableInfo.h"
-#include "Util/SVFUtil.h"
+#include "SVF/SVFIR/SymbolTableInfo.h"
+#include "SVF/Util/SVFUtil.h"
 #include "SVF-LLVM/LLVMUtil.h"
-#include "SVFIR/SVFModule.h"
-#include "Util/PTAStat.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/Util/PTAStat.h"
 #include "SVF-LLVM/LLVMModule.h"
 #include "SVF-LLVM/ObjTypeInference.h"
 

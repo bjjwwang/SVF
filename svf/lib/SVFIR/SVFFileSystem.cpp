@@ -1,7 +1,7 @@
-#include "SVFIR/SVFFileSystem.h"
-#include "Graphs/CHG.h"
-#include "SVFIR/SVFIR.h"
-#include "Util/CommandLine.h"
+#include "SVF/SVFIR/SVFFileSystem.h"
+#include "SVF/Graphs/CHG.h"
+#include "SVF/SVFIR/SVFIR.h"
+#include "SVF/Util/CommandLine.h"
 #include <sys/fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>

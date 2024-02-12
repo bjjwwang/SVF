@@ -5,10 +5,10 @@
  *      Author: Yulei Sui, Peng Di
  */
 
-#include "Util/Options.h"
+#include "SVF/Util/Options.h"
 #include "MTAAnnotator.h"
-#include "MTA/LockAnalysis.h"
-#include "MemoryModel/PointsTo.h"
+#include "SVF/MTA/LockAnalysis.h"
+#include "SVF/MemoryModel/PointsTo.h"
 #include <sstream>
 
 using namespace SVF;

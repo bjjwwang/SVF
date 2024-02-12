@@ -23,10 +23,10 @@
 //
 // Created by Xiao on 30/12/23.
 //
-#include "MemoryModel/PointerAnalysisImpl.h"
-#include "Graphs/SVFG.h"
-#include "Util/Options.h"
-#include "CFL/CFLSVFGBuilder.h"
+#include "SVF/MemoryModel/PointerAnalysisImpl.h"
+#include "SVF/Graphs/SVFG.h"
+#include "SVF/Util/Options.h"
+#include "SVF/CFL/CFLSVFGBuilder.h"
 
 
 using namespace SVF;

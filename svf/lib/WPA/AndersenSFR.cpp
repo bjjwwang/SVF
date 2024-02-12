@@ -27,8 +27,8 @@
  *      Author: Yuxiang Lei
  */
 
-#include "WPA/AndersenPWC.h"
-#include "MemoryModel/PointsTo.h"
+#include "SVF/WPA/AndersenPWC.h"
+#include "SVF/MemoryModel/PointsTo.h"
 
 using namespace SVF;
 using namespace SVFUtil;

@@ -27,11 +27,11 @@
  *      Author: pengd
  */
 
-#include "Util/Options.h"
-#include "MTA/LockAnalysis.h"
-#include "MTA/MTA.h"
-#include "Util/SVFUtil.h"
-#include "Util/PTAStat.h"
+#include "SVF/Util/Options.h"
+#include "SVF/MTA/LockAnalysis.h"
+#include "SVF/MTA/MTA.h"
+#include "SVF/Util/SVFUtil.h"
+#include "SVF/Util/PTAStat.h"
 
 
 using namespace SVF;

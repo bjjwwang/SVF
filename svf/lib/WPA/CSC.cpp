@@ -27,7 +27,7 @@
  *      Author: Yuxiang Lei
  */
 
-#include "WPA/CSC.h"
+#include "SVF/WPA/CSC.h"
 
 using namespace SVF;
 using namespace SVFUtil;

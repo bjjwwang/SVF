@@ -28,13 +28,13 @@
  *      Author: Yulei Sui
  */
 
-#include "Util/Options.h"
-#include "SABER/SaberCondAllocator.h"
-#include "Util/DPItem.h"
-#include "Graphs/SVFG.h"
+#include "SVF/Util/Options.h"
+#include "SVF/SABER/SaberCondAllocator.h"
+#include "SVF/Util/DPItem.h"
+#include "SVF/Graphs/SVFG.h"
 #include <climits>
 #include <cmath>
-#include "SVFIR/SVFStatements.h"
+#include "SVF/SVFIR/SVFStatements.h"
 
 using namespace SVF;
 using namespace SVFUtil;

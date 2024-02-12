@@ -27,12 +27,12 @@
  *      Author: Yulei Sui
  */
 
-#include "WPA/TypeAnalysis.h"
-#include "Graphs/CHG.h"
-#include "Graphs/ICFGStat.h"
-#include "Graphs/VFG.h"
-#include "Util/Options.h"
-#include "Util/PTAStat.h"
+#include "SVF/WPA/TypeAnalysis.h"
+#include "SVF/Graphs/CHG.h"
+#include "SVF/Graphs/ICFGStat.h"
+#include "SVF/Graphs/VFG.h"
+#include "SVF/Util/Options.h"
+#include "SVF/Util/PTAStat.h"
 
 using namespace SVF;
 using namespace SVFUtil;

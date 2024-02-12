@@ -28,12 +28,12 @@
  */
 
 
-#include "Util/Options.h"
-#include "MemoryModel/PointerAnalysisImpl.h"
-#include "DDA/DDAPass.h"
-#include "DDA/FlowDDA.h"
-#include "DDA/ContextDDA.h"
-#include "DDA/DDAClient.h"
+#include "SVF/Util/Options.h"
+#include "SVF/MemoryModel/PointerAnalysisImpl.h"
+#include "SVF/DDA/DDAPass.h"
+#include "SVF/DDA/FlowDDA.h"
+#include "SVF/DDA/ContextDDA.h"
+#include "SVF/DDA/DDAClient.h"
 
 #include <sstream>
 #include <limits.h>

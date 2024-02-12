@@ -12,7 +12,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "FastCluster/fastcluster.h"
+#include "SVF/FastCluster/fastcluster.h"
 
 // Code by Daniel Müllner
 // workaround to make it usable as a standalone version (without R)

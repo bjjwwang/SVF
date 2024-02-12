@@ -30,7 +30,7 @@
 #ifndef PAGBUILDER_H_
 #define PAGBUILDER_H_
 
-#include "SVFIR/SVFIR.h"
+#include "SVF/SVFIR/SVFIR.h"
 #include "SVF-LLVM/BasicTypes.h"
 #include "SVF-LLVM/ICFGBuilder.h"
 #include "SVF-LLVM/LLVMModule.h"

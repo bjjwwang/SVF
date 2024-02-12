@@ -9,10 +9,10 @@
 
 #include <sstream>
 
-#include "Util/Options.h"
+#include "SVF/Util/Options.h"
 #include "SVF-LLVM/DCHG.h"
 #include "SVF-LLVM/CppUtil.h"
-#include "Util/SVFUtil.h"
+#include "SVF/Util/SVFUtil.h"
 #include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/LLVMModule.h"
 

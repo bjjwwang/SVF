@@ -34,12 +34,12 @@
 #include "SVF-LLVM/LLVMLoopAnalysis.h"
 #include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/SymbolTableBuilder.h"
-#include "SVFIR/PAGBuilderFromFile.h"
-#include "SVFIR/SVFFileSystem.h"
-#include "SVFIR/SVFModule.h"
-#include "SVFIR/SVFValue.h"
-#include "Util/Options.h"
-#include "Util/SVFUtil.h"
+#include "SVF/SVFIR/PAGBuilderFromFile.h"
+#include "SVF/SVFIR/SVFFileSystem.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/SVFIR/SVFValue.h"
+#include "SVF/Util/Options.h"
+#include "SVF/Util/SVFUtil.h"
 
 using namespace std;
 using namespace SVF;

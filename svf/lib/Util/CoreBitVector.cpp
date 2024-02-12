@@ -11,10 +11,10 @@
 
 #include <limits.h>
 
-#include "Util/SparseBitVector.h"  // For LLVM's countPopulation.
-#include "Util/CoreBitVector.h"
-#include "SVFIR/SVFType.h"
-#include "Util/SVFUtil.h"
+#include "SVF/Util/SparseBitVector.h"  // For LLVM's countPopulation.
+#include "SVF/Util/CoreBitVector.h"
+#include "SVF/SVFIR/SVFType.h"
+#include "SVF/Util/SVFUtil.h"
 
 namespace SVF
 {

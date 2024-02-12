@@ -27,10 +27,10 @@
  *      Author: Yulei Sui, Peng Di
  */
 
-#include "Util/CommandLine.h"
-#include "Util/Options.h"
-#include "MTA/PCG.h"
-#include "Util/SVFUtil.h"
+#include "SVF/Util/CommandLine.h"
+#include "SVF/Util/Options.h"
+#include "SVF/MTA/PCG.h"
+#include "SVF/Util/SVFUtil.h"
 
 using namespace SVF;
 using namespace SVFUtil;

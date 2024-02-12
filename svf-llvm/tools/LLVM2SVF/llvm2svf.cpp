@@ -28,9 +28,9 @@
  */
 
 #include "SVF-LLVM/SVFIRBuilder.h"
-#include "Util/CommandLine.h"
-#include "Util/Options.h"
-#include "SVFIR/SVFFileSystem.h"
+#include "SVF/Util/CommandLine.h"
+#include "SVF/Util/Options.h"
+#include "SVF/SVFIR/SVFFileSystem.h"
 
 
 using namespace std;

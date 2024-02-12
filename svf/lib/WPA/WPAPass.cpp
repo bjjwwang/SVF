@@ -33,16 +33,16 @@
  */
 
 
-#include "Util/Options.h"
-#include "SVFIR/SVFModule.h"
-#include "MemoryModel/PointerAnalysisImpl.h"
-#include "WPA/WPAPass.h"
-#include "WPA/Andersen.h"
-#include "WPA/AndersenPWC.h"
-#include "WPA/FlowSensitive.h"
-#include "WPA/VersionedFlowSensitive.h"
-#include "WPA/TypeAnalysis.h"
-#include "WPA/Steensgaard.h"
+#include "SVF/Util/Options.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/MemoryModel/PointerAnalysisImpl.h"
+#include "SVF/WPA/WPAPass.h"
+#include "SVF/WPA/Andersen.h"
+#include "SVF/WPA/AndersenPWC.h"
+#include "SVF/WPA/FlowSensitive.h"
+#include "SVF/WPA/VersionedFlowSensitive.h"
+#include "SVF/WPA/TypeAnalysis.h"
+#include "SVF/WPA/Steensgaard.h"
 
 using namespace SVF;
 

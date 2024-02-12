@@ -27,9 +27,9 @@
  *
  */
 
-#include "AE/Core/RelExeState.h"
-#include "Util/GeneralType.h"
-#include "Util/SVFUtil.h"
+#include "SVF/AE/Core/RelExeState.h"
+#include "SVF/Util/GeneralType.h"
+#include "SVF/Util/SVFUtil.h"
 #include <iomanip>
 
 using namespace SVF;

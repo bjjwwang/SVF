@@ -34,10 +34,10 @@
 #include "SVF-LLVM/GEPTypeBridgeIterator.h" // include bridge_gep_iterator
 #include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/SymbolTableBuilder.h"
-#include "SVFIR/SVFModule.h"
-#include "Util/NodeIDAllocator.h"
-#include "Util/Options.h"
-#include "Util/SVFUtil.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/Util/NodeIDAllocator.h"
+#include "SVF/Util/Options.h"
+#include "SVF/Util/SVFUtil.h"
 #include "SVF-LLVM/ObjTypeInference.h"
 
 using namespace SVF;

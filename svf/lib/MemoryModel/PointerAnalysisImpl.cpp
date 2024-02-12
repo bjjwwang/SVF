@@ -29,8 +29,8 @@
  */
 
 
-#include "MemoryModel/PointerAnalysisImpl.h"
-#include "Util/Options.h"
+#include "SVF/MemoryModel/PointerAnalysisImpl.h"
+#include "SVF/Util/Options.h"
 #include <fstream>
 #include <sstream>
 

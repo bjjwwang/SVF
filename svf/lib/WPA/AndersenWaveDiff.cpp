@@ -27,8 +27,8 @@
  *      Author: yesen
  */
 
-#include "WPA/Andersen.h"
-#include "MemoryModel/PointsTo.h"
+#include "SVF/WPA/Andersen.h"
+#include "SVF/MemoryModel/PointsTo.h"
 
 using namespace SVF;
 using namespace SVFUtil;

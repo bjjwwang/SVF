@@ -27,9 +27,9 @@
  *      Author: Yulei Sui
  */
 
-#include "Util/Options.h"
-#include "Util/SVFUtil.h"
-#include "MemoryModel/PointsTo.h"
+#include "SVF/Util/Options.h"
+#include "SVF/Util/SVFUtil.h"
+#include "SVF/MemoryModel/PointsTo.h"
 
 #include <sys/resource.h>		/// increase stack size
 

@@ -27,9 +27,9 @@
  *      Author: Yulei Sui
  */
 
-#include "SABER/DoubleFreeChecker.h"
-#include "Util/SVFUtil.h"
-#include "Util/Options.h"
+#include "SVF/SABER/DoubleFreeChecker.h"
+#include "SVF/Util/SVFUtil.h"
+#include "SVF/Util/Options.h"
 
 using namespace SVF;
 using namespace SVFUtil;

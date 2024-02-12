@@ -27,12 +27,12 @@
  *      Author: rockysui
  */
 
-#include "SABER/SaberSVFGBuilder.h"
-#include "SABER/SaberCheckerAPI.h"
-#include "MemoryModel/PointerAnalysisImpl.h"
-#include "Graphs/SVFG.h"
-#include "Util/Options.h"
-#include "SABER/SaberCondAllocator.h"
+#include "SVF/SABER/SaberSVFGBuilder.h"
+#include "SVF/SABER/SaberCheckerAPI.h"
+#include "SVF/MemoryModel/PointerAnalysisImpl.h"
+#include "SVF/Graphs/SVFG.h"
+#include "SVF/Util/Options.h"
+#include "SVF/SABER/SaberCondAllocator.h"
 
 
 using namespace SVF;

@@ -27,11 +27,11 @@
  *      Author: Yulei Sui, Peng Di
  */
 
-#include "Util/Options.h"
-#include "MTA/FSMPTA.h"
-#include "MTA/MHP.h"
-#include "MTA/PCG.h"
-#include "MemoryModel/PointsTo.h"
+#include "SVF/Util/Options.h"
+#include "SVF/MTA/FSMPTA.h"
+#include "SVF/MTA/MHP.h"
+#include "SVF/MTA/PCG.h"
+#include "SVF/MemoryModel/PointsTo.h"
 
 using namespace SVF;
 using namespace SVFUtil;

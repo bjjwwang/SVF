@@ -27,9 +27,9 @@
  *      Author: yesen
  */
 
-#include "Graphs/SVFG.h"
-#include "Graphs/SVFGStat.h"
-#include "Graphs/PTACallGraph.h"
+#include "SVF/Graphs/SVFG.h"
+#include "SVF/Graphs/SVFGStat.h"
+#include "SVF/Graphs/PTACallGraph.h"
 
 using namespace SVF;
 using namespace std;

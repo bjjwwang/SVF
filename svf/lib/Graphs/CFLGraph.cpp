@@ -28,9 +28,9 @@
  *      Author: Yulei Sui
  */
 
-#include "Util/Options.h"
-#include "Graphs/CFLGraph.h"
-#include "Util/SVFUtil.h"
+#include "SVF/Util/Options.h"
+#include "SVF/Graphs/CFLGraph.h"
+#include "SVF/Util/SVFUtil.h"
 
 using namespace SVF;
 

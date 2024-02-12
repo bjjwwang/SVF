@@ -32,9 +32,9 @@
  *
  */
 
-#include "Util/Options.h"
-#include "Graphs/SVFGOPT.h"
-#include "Graphs/SVFGStat.h"
+#include "SVF/Util/Options.h"
+#include "SVF/Graphs/SVFGOPT.h"
+#include "SVF/Graphs/SVFGStat.h"
 
 using namespace SVF;
 using namespace SVFUtil;

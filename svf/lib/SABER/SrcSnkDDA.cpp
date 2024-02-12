@@ -28,11 +28,11 @@
  */
 
 
-#include "Util/Options.h"
-#include "SABER/SrcSnkDDA.h"
-#include "Graphs/SVFGStat.h"
-#include "Util/Options.h"
-#include "WPA/Andersen.h"
+#include "SVF/Util/Options.h"
+#include "SVF/SABER/SrcSnkDDA.h"
+#include "SVF/Graphs/SVFGStat.h"
+#include "SVF/Util/Options.h"
+#include "SVF/WPA/Andersen.h"
 
 using namespace SVF;
 using namespace SVFUtil;

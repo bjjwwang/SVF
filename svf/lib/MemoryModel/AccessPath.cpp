@@ -29,9 +29,9 @@
  *
  */
 
-#include "Util/Options.h"
-#include "MemoryModel/AccessPath.h"
-#include "Util/SVFUtil.h"
+#include "SVF/Util/Options.h"
+#include "SVF/MemoryModel/AccessPath.h"
+#include "SVF/Util/SVFUtil.h"
 
 using namespace SVF;
 using namespace SVFUtil;

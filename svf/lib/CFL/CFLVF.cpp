@@ -27,7 +27,7 @@
  *      Author: Pei Xu
  */
 
-#include "CFL/CFLVF.h"
+#include "SVF/CFL/CFLVF.h"
 
 using namespace SVF;
 using namespace SVFUtil;

@@ -27,8 +27,8 @@
  *      Author: Yulei Sui
  */
 
-#include "Graphs/ConsG.h"
-#include "Util/Options.h"
+#include "SVF/Graphs/ConsG.h"
+#include "SVF/Util/Options.h"
 
 using namespace SVF;
 using namespace SVFUtil;

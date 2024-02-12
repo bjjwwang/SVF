@@ -12,9 +12,9 @@
 #include <new>
 #include <utility>
 
-#include "Util/Options.h"
-#include "MemoryModel/PointsTo.h"
-#include "SVFIR/SVFValue.h"
+#include "SVF/Util/Options.h"
+#include "SVF/MemoryModel/PointsTo.h"
+#include "SVF/SVFIR/SVFValue.h"
 
 namespace SVF
 {

@@ -27,11 +27,11 @@
  *      Author: Yulei Sui
  */
 
-#include <Util/Options.h>
-#include "SVFIR/SVFModule.h"
-#include "Graphs/ICFG.h"
-#include "SVFIR/SVFIR.h"
-#include "Graphs/PTACallGraph.h"
+#include "SVF/Util/Options.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/Graphs/ICFG.h"
+#include "SVF/SVFIR/SVFIR.h"
+#include "SVF/Graphs/PTACallGraph.h"
 
 using namespace SVF;
 using namespace SVFUtil;

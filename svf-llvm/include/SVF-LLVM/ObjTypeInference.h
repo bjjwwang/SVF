@@ -30,10 +30,10 @@
 #ifndef SVF_OBJTYPEINFERENCE_H
 #define SVF_OBJTYPEINFERENCE_H
 
-#include "Util/SVFUtil.h"
+#include "SVF/Util/SVFUtil.h"
 #include "SVF-LLVM/BasicTypes.h"
-#include "SVFIR/SVFValue.h"
-#include "Util/ThreadAPI.h"
+#include "SVF/SVFIR/SVFValue.h"
+#include "SVF/Util/ThreadAPI.h"
 
 namespace SVF
 {

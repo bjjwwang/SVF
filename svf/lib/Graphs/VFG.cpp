@@ -28,11 +28,11 @@
  */
 
 
-#include <Graphs/SVFGNode.h>
-#include "Util/Options.h"
-#include "Graphs/VFG.h"
-#include "SVFIR/SVFModule.h"
-#include "Util/SVFUtil.h"
+#include "SVF/Graphs/SVFGNode.h"
+#include "SVF/Util/Options.h"
+#include "SVF/Graphs/VFG.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/Util/SVFUtil.h"
 
 using namespace SVF;
 using namespace SVFUtil;

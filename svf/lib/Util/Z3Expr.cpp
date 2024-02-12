@@ -26,8 +26,8 @@
  *      Author: Xiao
  */
 
-#include "Util/Z3Expr.h"
-#include "Util/Options.h"
+#include "SVF/Util/Z3Expr.h"
+#include "SVF/Util/Options.h"
 
 namespace SVF
 {

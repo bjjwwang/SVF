@@ -26,13 +26,13 @@
  // Author: Yulei Sui,
  */
 
-#include "AE/Svfexe/SVFIR2ItvExeState.h"
-#include "Graphs/SVFG.h"
+#include "SVF/AE/Svfexe/SVFIR2ItvExeState.h"
+#include "SVF/Graphs/SVFG.h"
 #include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/SVFIRBuilder.h"
-#include "Util/CommandLine.h"
-#include "Util/Options.h"
-#include "WPA/Andersen.h"
+#include "SVF/Util/CommandLine.h"
+#include "SVF/Util/Options.h"
+#include "SVF/WPA/Andersen.h"
 
 using namespace std;
 using namespace SVF;

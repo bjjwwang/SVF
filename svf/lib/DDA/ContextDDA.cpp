@@ -27,11 +27,11 @@
  *      Author: Yulei Sui
  */
 
-#include "Util/Options.h"
-#include "DDA/ContextDDA.h"
-#include "DDA/FlowDDA.h"
-#include "DDA/DDAClient.h"
-#include "MemoryModel/PointsTo.h"
+#include "SVF/Util/Options.h"
+#include "SVF/DDA/ContextDDA.h"
+#include "SVF/DDA/FlowDDA.h"
+#include "SVF/DDA/DDAClient.h"
+#include "SVF/MemoryModel/PointsTo.h"
 
 using namespace SVF;
 using namespace SVFUtil;

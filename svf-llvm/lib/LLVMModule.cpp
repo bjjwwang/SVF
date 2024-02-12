@@ -29,14 +29,14 @@
 
 #include <queue>
 #include <algorithm>
-#include "SVFIR/SVFModule.h"
-#include "Util/SVFUtil.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/Util/SVFUtil.h"
 #include "SVF-LLVM/BasicTypes.h"
 #include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/CppUtil.h"
 #include "SVF-LLVM/BreakConstantExpr.h"
 #include "SVF-LLVM/SymbolTableBuilder.h"
-#include "MSSA/SVFGBuilder.h"
+#include "SVF/MSSA/SVFGBuilder.h"
 #include "llvm/Support/FileSystem.h"
 #include "SVF-LLVM/ObjTypeInference.h"
 

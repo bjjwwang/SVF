@@ -28,9 +28,9 @@
  *      Author: Yulei
  */
 
-#include "Util/SVFUtil.h"
-#include "Util/CallGraphBuilder.h"
-#include "Graphs/ICFG.h"
+#include "SVF/Util/SVFUtil.h"
+#include "SVF/Util/CallGraphBuilder.h"
+#include "SVF/Graphs/ICFG.h"
 
 using namespace SVF;
 using namespace SVFUtil;

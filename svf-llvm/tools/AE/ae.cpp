@@ -26,13 +26,13 @@
  // Author: Jiawei Wang, Xiao Cheng, Jiawei Yang, Jiawei Ren, Yulei Sui
  */
 #include "SVF-LLVM/SVFIRBuilder.h"
-#include "WPA/WPAPass.h"
-#include "Util/CommandLine.h"
-#include "Util/Options.h"
+#include "SVF/WPA/WPAPass.h"
+#include "SVF/Util/CommandLine.h"
+#include "SVF/Util/Options.h"
 
-#include "AE/Svfexe/BufOverflowChecker.h"
-#include "AE/Core/RelExeState.h"
-#include "AE/Core/RelationSolver.h"
+#include "SVF/AE/Svfexe/BufOverflowChecker.h"
+#include "SVF/AE/Core/RelExeState.h"
+#include "SVF/AE/Core/RelationSolver.h"
 
 using namespace SVF;
 using namespace SVFUtil;

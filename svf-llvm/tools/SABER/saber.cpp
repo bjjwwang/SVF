@@ -28,12 +28,12 @@
 
 #include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/SVFIRBuilder.h"
-#include "SABER/LeakChecker.h"
-#include "SABER/FileChecker.h"
-#include "SABER/DoubleFreeChecker.h"
-#include "Util/CommandLine.h"
-#include "Util/Options.h"
-#include "Util/Z3Expr.h"
+#include "SVF/SABER/LeakChecker.h"
+#include "SVF/SABER/FileChecker.h"
+#include "SVF/SABER/DoubleFreeChecker.h"
+#include "SVF/Util/CommandLine.h"
+#include "SVF/Util/Options.h"
+#include "SVF/Util/Z3Expr.h"
 
 
 using namespace llvm;

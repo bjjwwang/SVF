@@ -27,12 +27,12 @@
  *      Author: Yulei Sui
  */
 
-#include "Util/Options.h"
-#include "SVFIR/SVFModule.h"
-#include "WPA/WPAStat.h"
-#include "WPA/FlowSensitive.h"
-#include "WPA/Andersen.h"
-#include "MemoryModel/PointsTo.h"
+#include "SVF/Util/Options.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/WPA/WPAStat.h"
+#include "SVF/WPA/FlowSensitive.h"
+#include "SVF/WPA/Andersen.h"
+#include "SVF/MemoryModel/PointsTo.h"
 
 using namespace SVF;
 using namespace SVFUtil;

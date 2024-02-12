@@ -27,10 +27,10 @@
  *      Author: Shuangxiang Kan
  */
 
-#include "Util/ExtAPI.h"
-#include "Util/SVFUtil.h"
-#include "Util/Options.h"
-#include "Util/config.h"
+#include "SVF/Util/ExtAPI.h"
+#include "SVF/Util/SVFUtil.h"
+#include "SVF/Util/Options.h"
+#include "SVF/Util/config.h"
 #include <ostream>
 #include <sys/stat.h>
 

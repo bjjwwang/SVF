@@ -26,7 +26,7 @@
  *  Created on: Apr 23, 2014
  *      Author: Yulei Sui
  */
-#include "SABER/SaberCheckerAPI.h"
+#include "SVF/SABER/SaberCheckerAPI.h"
 #include <stdio.h>
 
 using namespace std;

@@ -29,9 +29,9 @@
  */
 
 #include <sstream>
-#include "SVFIR/SVFModule.h"
-#include "Util/SVFUtil.h"
-#include "Graphs/PTACallGraph.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/Util/SVFUtil.h"
+#include "SVF/Graphs/PTACallGraph.h"
 
 using namespace SVF;
 using namespace SVFUtil;

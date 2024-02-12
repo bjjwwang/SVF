@@ -14,12 +14,12 @@
 #ifndef DCHG_H_
 #define DCHG_H_
 
-#include "Graphs/GenericGraph.h"
-#include "Graphs/CHG.h"
+#include "SVF/Graphs/GenericGraph.h"
+#include "SVF/Graphs/CHG.h"
 #include "SVF-LLVM/BasicTypes.h"
-#include "SVFIR/SVFModule.h"
-#include "Util/SVFUtil.h"
-#include "Util/WorkList.h"
+#include "SVF/SVFIR/SVFModule.h"
+#include "SVF/Util/SVFUtil.h"
+#include "SVF/Util/WorkList.h"
 
 namespace SVF
 {
