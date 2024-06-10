@@ -33,6 +33,12 @@
 using namespace SVF;
 using namespace SVFUtil;
 
+//init SVF::AbstractState::_globalVarToAbsVal
+AbstractState::VarToAbsValMap AbstractState::_globalVarToAbsVal;
+// init SVF::AbstractState::_globalAddrToAbsVal
+AbstractState::AddrToAbsValMap AbstractState::_globalAddrToAbsVal;
+
+
 bool AbstractState::equals(const AbstractState&other) const
 {
     return *this == other;

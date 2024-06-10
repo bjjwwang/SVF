@@ -382,6 +382,22 @@ protected:
         }
     }
 
+    void printAbsTraceSize() {
+        u32_t global_size = AbstractState::getGlobalLocToVal().size() +
+            AbstractState::getGlobalVarToVal().size();
+        u32_t local_size = 0;
+        for (auto& kv : _postAbsTrace) {
+            local_size += kv.second.getLocToVal().size() + kv.second.getVarToVal().size();
+        }
+        for (auto& kv: _preAbsTrace)
+        {
+            local_size +=
+                kv.second.getLocToVal().size() + kv.second.getVarToVal().size();
+        }
+        u32_t local_state_num = _postAbsTrace.size() + _preAbsTrace.size();
+        SVFUtil::outs() << "Global size: " << global_size << "," << " Local size: " << local_size <<"," << " Local State Num: " << local_state_num <<"\n" ;
+    }
+
 protected:
     // there data should be shared with subclasses
     Map<std::string, std::function<void(const CallSite &)>> _func_map;

@@ -165,74 +165,162 @@ public:
 
 protected:
     VarToAbsValMap _varToAbsVal; ///< Map a variable (symbol) to its abstract value
-    AddrToAbsValMap
-    _addrToAbsVal; ///< Map a memory address to its stored abstract value
+    AddrToAbsValMap _addrToAbsVal; ///< Map a memory address to its stored abstract value
+
+    static VarToAbsValMap _globalVarToAbsVal;
+    static AddrToAbsValMap _globalAddrToAbsVal;
+
+
+    inline bool inLocalVarToValTable(u32_t id) const
+    {
+        if (_varToAbsVal.find(id) != _varToAbsVal.end()) {
+            return _varToAbsVal.at(id).isInterval();
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    inline bool inLocalVarToAddrsTable(u32_t id) const
+    {
+        if (_varToAbsVal.find(id) != _varToAbsVal.end())
+        {
+            return _varToAbsVal.at(id).isAddr();
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    inline bool inLocalAddrToValTable(u32_t addr) const
+    {
+        if (_addrToAbsVal.find(addr) != _addrToAbsVal.end())
+        {
+            return _addrToAbsVal.at(addr).isInterval();
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    inline bool inLocalAddrToAddrsTable(u32_t addr) const
+    {
+        if (_addrToAbsVal.find(addr) != _addrToAbsVal.end())
+        {
+            return _addrToAbsVal.at(addr).isAddr();
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    inline bool inGlobalVarToValTable(u32_t id) const
+    {
+        if (_globalVarToAbsVal.find(id) != _globalVarToAbsVal.end())
+        {
+            return _globalVarToAbsVal.at(id).isInterval();
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+
+    inline bool inGlobalVarToAddrsTable(u32_t id) const
+    {
+        if (_globalVarToAbsVal.find(id) != _globalVarToAbsVal.end())
+        {
+            return _globalVarToAbsVal.at(id).isAddr();
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+
+    inline bool inGlobalAddrToValTable(u32_t addr) const {
+        if (_globalAddrToAbsVal.find(addr) != _globalAddrToAbsVal.end())
+        {
+            return _globalAddrToAbsVal.at(addr).isInterval();
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    inline bool inGlobalAddrToAddrsTable(u32_t addr) const
+    {
+        if (_globalAddrToAbsVal.find(addr) != _globalAddrToAbsVal.end())
+        {
+            return _globalAddrToAbsVal.at(addr).isAddr();
+        }
+        else
+        {
+            return false;
+        }
+    }
+
 
 public:
-
 
     /// get abstract value of variable
     inline virtual AbstractValue &operator[](u32_t varId)
     {
-        return _varToAbsVal[varId];
+        if (inLocalVarToValTable(varId) || inLocalVarToAddrsTable(varId))
+            return _varToAbsVal[varId];
+        else if (inGlobalVarToValTable(varId) || inGlobalVarToAddrsTable(varId))
+            return _globalVarToAbsVal[varId];
+        else
+        {
+            //std::cout << "The variable is not in the map" << std::endl;
+            // if the variable is not in the map, create a new one in local map
+            _varToAbsVal[varId] = IntervalValue::top();
+            return _varToAbsVal[varId];
+        }
     }
 
     /// get abstract value of variable
     inline virtual const AbstractValue &operator[](u32_t varId) const
     {
-        return _varToAbsVal.at(varId);
+        if (inLocalVarToValTable(varId) || inLocalVarToAddrsTable(varId))
+            return _varToAbsVal.at(varId);
+        else if (inGlobalVarToValTable(varId) || inGlobalVarToAddrsTable(varId))
+            return _globalVarToAbsVal.at(varId);
+        else {
+            return _varToAbsVal.at(varId);
+        }
+//            assert(false && "The variable is not in the map");
     }
 
     /// whether the variable is in varToAddrs table
     inline bool inVarToAddrsTable(u32_t id) const
     {
-        if (_varToAbsVal.find(id)!= _varToAbsVal.end())
-        {
-            if (_varToAbsVal.at(id).isAddr())
-            {
-                return true;
-            }
-        }
-        return false;
+        return inLocalVarToAddrsTable(id) || inGlobalVarToAddrsTable(id);
     }
 
     /// whether the variable is in varToVal table
     inline virtual bool inVarToValTable(u32_t id) const
     {
-        if (_varToAbsVal.find(id) != _varToAbsVal.end())
-        {
-            if (_varToAbsVal.at(id).isInterval())
-            {
-                return true;
-            }
-        }
-        return false;
+        return inLocalVarToValTable(id) || inGlobalVarToValTable(id);
     }
 
     /// whether the memory address stores memory addresses
     inline bool inAddrToAddrsTable(u32_t id) const
     {
-        if (_addrToAbsVal.find(id)!= _addrToAbsVal.end())
-        {
-            if (_addrToAbsVal.at(id).isAddr())
-            {
-                return true;
-            }
-        }
-        return false;
+        return inLocalAddrToAddrsTable(id) || inGlobalAddrToAddrsTable(id);
     }
 
     /// whether the memory address stores abstract value
     inline virtual bool inAddrToValTable(u32_t id) const
     {
-        if (_addrToAbsVal.find(id) != _addrToAbsVal.end())
-        {
-            if (_addrToAbsVal.at(id).isInterval())
-            {
-                return true;
-            }
-        }
-        return false;
+        return inLocalAddrToValTable(id) || inGlobalAddrToValTable(id);
     }
 
     /// get var2val map
@@ -247,7 +335,27 @@ public:
         return _addrToAbsVal;
     }
 
+    /// get global var2val map
+    static const VarToAbsValMap& getGlobalVarToVal()
+    {
+        return _globalVarToAbsVal;
+    }
+
+
+    /// get global loc2val map
+    static const AddrToAbsValMap& getGlobalLocToVal()
+    {
+        return _globalAddrToAbsVal;
+    }
+
 public:
+    /// move local to global node
+    void moveToGlobal() {
+        _globalVarToAbsVal = _varToAbsVal;
+        _globalAddrToAbsVal = _addrToAbsVal;
+        _varToAbsVal.clear();
+        _addrToAbsVal.clear();
+    }
 
     /// domain widen with other, and return the widened domain
     AbstractState widening(const AbstractState&other);
@@ -291,8 +399,10 @@ public:
     {
         assert(isVirtualMemAddress(addr) && "not virtual address?");
         u32_t objId = getInternalID(addr);
+        if (inGlobalAddrToValTable(objId) || inGlobalAddrToAddrsTable(objId)) {
+            return _globalAddrToAbsVal[objId];
+        }
         return _addrToAbsVal[objId];
-
     }
 
 

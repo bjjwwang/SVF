@@ -172,6 +172,7 @@ void AbstractInterpretation::handleGlobalNode()
     {
         handleSVFStatement(stmt);
     }
+    _postAbsTrace[node].moveToGlobal();
 }
 
 /// get execution state by merging states of predecessor blocks
@@ -825,6 +826,7 @@ void AbstractInterpretation::handleFunc(const SVFFunction *func)
             assert(false && "unknown WTO type!");
         }
     }
+    printAbsTraceSize();
 }
 
 void AbstractInterpretation::handleSVFStatement(const SVFStmt *stmt)
