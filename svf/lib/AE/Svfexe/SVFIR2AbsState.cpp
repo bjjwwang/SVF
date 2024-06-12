@@ -108,7 +108,7 @@ IntervalValue SVFIR2AbsState::getRangeLimitFromType(const SVFType* type)
     }
 }
 
-IntervalValue SVFIR2AbsState::getZExtValue(const AbstractState& as, const SVFVar* var)
+IntervalValue SVFIR2AbsState::getZExtValue(AbstractState& as, const SVFVar* var)
 {
     const SVFType* type = var->getType();
     if (SVFUtil::isa<SVFIntegerType>(type))
@@ -153,12 +153,12 @@ IntervalValue SVFIR2AbsState::getZExtValue(const AbstractState& as, const SVFVar
     return IntervalValue::top(); // TODO: may have better solution
 }
 
-IntervalValue SVFIR2AbsState::getSExtValue(const AbstractState& as, const SVFVar* var)
+IntervalValue SVFIR2AbsState::getSExtValue(AbstractState& as, const SVFVar* var)
 {
     return as[var->getId()].getInterval();
 }
 
-IntervalValue SVFIR2AbsState::getFPToSIntValue(const AbstractState& as, const SVF::SVFVar* var)
+IntervalValue SVFIR2AbsState::getFPToSIntValue(AbstractState& as, const SVF::SVFVar* var)
 {
     if (as[var->getId()].getInterval().is_real())
     {
@@ -176,7 +176,7 @@ IntervalValue SVFIR2AbsState::getFPToSIntValue(const AbstractState& as, const SV
     }
 }
 
-IntervalValue SVFIR2AbsState::getFPToUIntValue(const AbstractState& as, const SVF::SVFVar* var)
+IntervalValue SVFIR2AbsState::getFPToUIntValue(AbstractState& as, const SVF::SVFVar* var)
 {
     if (as[var->getId()].getInterval().is_real())
     {
@@ -194,7 +194,7 @@ IntervalValue SVFIR2AbsState::getFPToUIntValue(const AbstractState& as, const SV
     }
 }
 
-IntervalValue SVFIR2AbsState::getSIntToFPValue(const AbstractState& as, const SVF::SVFVar* var)
+IntervalValue SVFIR2AbsState::getSIntToFPValue(AbstractState& as, const SVF::SVFVar* var)
 {
     // get the sint value of ub and lb
     s64_t sint_lb = as[var->getId()].getInterval().lb().getIntNumeral();
@@ -205,7 +205,7 @@ IntervalValue SVFIR2AbsState::getSIntToFPValue(const AbstractState& as, const SV
     return IntervalValue(float_lb, float_ub);
 }
 
-IntervalValue SVFIR2AbsState::getUIntToFPValue(const AbstractState& as, const SVF::SVFVar* var)
+IntervalValue SVFIR2AbsState::getUIntToFPValue(AbstractState& as, const SVF::SVFVar* var)
 {
     // get the uint value of ub and lb
     u64_t uint_lb = as[var->getId()].getInterval().lb().getIntNumeral();
@@ -216,7 +216,7 @@ IntervalValue SVFIR2AbsState::getUIntToFPValue(const AbstractState& as, const SV
     return IntervalValue(float_lb, float_ub);
 }
 
-IntervalValue SVFIR2AbsState::getTruncValue(const AbstractState& as, const SVF::SVFVar* var, const SVFType* dstType)
+IntervalValue SVFIR2AbsState::getTruncValue(AbstractState& as, const SVF::SVFVar* var, const SVFType* dstType)
 {
     const IntervalValue& itv = as[var->getId()].getInterval();
     if(itv.isBottom()) return itv;
@@ -267,7 +267,7 @@ IntervalValue SVFIR2AbsState::getTruncValue(const AbstractState& as, const SVF::
     }
 }
 
-IntervalValue SVFIR2AbsState::getFPTruncValue(const AbstractState& as, const SVF::SVFVar* var, const SVFType* dstType)
+IntervalValue SVFIR2AbsState::getFPTruncValue(AbstractState& as, const SVF::SVFVar* var, const SVFType* dstType)
 {
     // TODO: now we do not really handle fptrunc
     return as[var->getId()].getInterval();

@@ -67,14 +67,14 @@ public:
     /// Return the value range of Integer SVF Type, e.g. unsigned i8 Type->[0, 255], signed i8 Type->[-128, 127]
     IntervalValue getRangeLimitFromType(const SVFType* type);
 
-    IntervalValue getZExtValue(const AbstractState& es, const SVFVar* var);
-    IntervalValue getSExtValue(const AbstractState& es, const SVFVar* var);
-    IntervalValue getFPToSIntValue(const AbstractState& es, const SVFVar* var);
-    IntervalValue getFPToUIntValue(const AbstractState& es, const SVFVar* var);
-    IntervalValue getSIntToFPValue(const AbstractState& es, const SVFVar* var);
-    IntervalValue getUIntToFPValue(const AbstractState& es, const SVFVar* var);
-    IntervalValue getTruncValue(const AbstractState& es, const SVFVar* var, const SVFType* dstType);
-    IntervalValue getFPTruncValue(const AbstractState& es, const SVFVar* var, const SVFType* dstType);
+    IntervalValue getZExtValue(AbstractState& es, const SVFVar* var);
+    IntervalValue getSExtValue(AbstractState& es, const SVFVar* var);
+    IntervalValue getFPToSIntValue(AbstractState& es, const SVFVar* var);
+    IntervalValue getFPToUIntValue(AbstractState& es, const SVFVar* var);
+    IntervalValue getSIntToFPValue(AbstractState& es, const SVFVar* var);
+    IntervalValue getUIntToFPValue(AbstractState& es, const SVFVar* var);
+    IntervalValue getTruncValue(AbstractState& es, const SVFVar* var, const SVFType* dstType);
+    IntervalValue getFPTruncValue(AbstractState& es, const SVFVar* var, const SVFType* dstType);
 
     /// Return the byte offset expression of a GepStmt
     /// elemBytesize is the element byte size of an static alloc or heap alloc array

@@ -807,6 +807,9 @@ bool AbstractInterpretation::isFixPointAfterNarrowing(
 /// handle user defined function, ext function is not included.
 void AbstractInterpretation::handleFunc(const SVFFunction *func)
 {
+    if (_callSiteStack.size() > Options::MaxContextLen()) {
+        return;
+    }
     _stat->getFunctionTrace()++;
     ICFGWTO* wto = _funcToWTO[func];
     // set function entry ES
