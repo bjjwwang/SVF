@@ -392,17 +392,24 @@ public:
         assert(isVirtualMemAddress(addr) && "not virtual address?");
         if (isNullPtr(addr)) return;
         u32_t objId = getInternalID(addr);
-        _addrToAbsVal[objId] = val;
+        if (inGlobalAddrToAddrsTable(objId) || inGlobalAddrToValTable(objId))
+        {
+            _globalAddrToAbsVal[objId] = val;
+        } else {
+            _addrToAbsVal[objId] = val;
+        }
     }
 
     inline virtual AbstractValue &load(u32_t addr)
     {
         assert(isVirtualMemAddress(addr) && "not virtual address?");
         u32_t objId = getInternalID(addr);
-        if (inGlobalAddrToValTable(objId) || inGlobalAddrToAddrsTable(objId)) {
+        if (inGlobalAddrToAddrsTable(objId) || inGlobalAddrToValTable(objId))
+        {
             return _globalAddrToAbsVal[objId];
+        } else {
+            return _addrToAbsVal[objId];
         }
-        return _addrToAbsVal[objId];
     }
 
 

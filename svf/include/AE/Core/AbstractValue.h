@@ -36,7 +36,7 @@ public:
 
     AbstractValue()
     {
-        interval = IntervalValue::top();
+        interval = IntervalValue::bottom();
         addrs = AddressValue();
     }
 
