@@ -271,7 +271,7 @@ protected:
     inline NodeID addNullPtrNode()
     {
         LLVMContext& cxt = LLVMModuleSet::getLLVMModuleSet()->getContext();
-        ConstantPointerNull* constNull = ConstantPointerNull::get(Type::getInt8PtrTy(cxt));
+        ConstantPointerNull* constNull = ConstantPointerNull::get(PointerType::getUnqual(cxt));
         NodeID nullPtr = pag->addValNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(constNull),pag->getNullPtr());
         setCurrentLocation(constNull, nullptr);
         addBlackHoleAddrEdge(pag->getBlkPtr());
@@ -298,16 +298,112 @@ protected:
         }
         return nullptr;
     }
-    /// Add Copy edge
-    inline CopyStmt* addCopyEdge(NodeID src, NodeID dst)
+
+    /// Add Address edge from allocinst with arraysize like "%4 = alloca i8, i64 3"
+    inline AddrStmt* addAddrWithStackArraySz(NodeID src, NodeID dst, llvm::AllocaInst& inst)
     {
-        if(CopyStmt *edge = pag->addCopyStmt(src, dst))
+        AddrStmt* edge = addAddrEdge(src, dst);
+        if (inst.getArraySize())
+        {
+            SVFValue* arrSz = LLVMModuleSet::getLLVMModuleSet()->getSVFValue(inst.getArraySize());
+            edge->addArrSize(arrSz);
+        }
+        return edge;
+    }
+
+    /// Add Address edge from ext call with args like "%5 = call i8* @malloc(i64 noundef 5)"
+    inline AddrStmt* addAddrWithHeapSz(NodeID src, NodeID dst, const CallBase* cs)
+    {
+        // get name of called function
+        AddrStmt* edge = addAddrEdge(src, dst);
+
+        llvm::Function* calledFunc = cs->getCalledFunction();
+        std::string functionName;
+        if (calledFunc)
+        {
+            functionName = calledFunc->getName().str();
+        }
+        else
+        {
+            SVFUtil::wrnMsg("not support indirect call to add AddrStmt.\n");
+        }
+        if (functionName == "malloc")
+        {
+            if (cs->arg_size() > 0)
+            {
+                const llvm::Value* val = cs->getArgOperand(0);
+                SVFValue* svfval = LLVMModuleSet::getLLVMModuleSet()->getSVFValue(val);
+                edge->addArrSize(svfval);
+            }
+        }
+        // Check if the function called is 'calloc' and process its arguments.
+        // e.g. "%5 = call i8* @calloc(1, 8)", edge should add two SVFValue (1 and 8)
+        else if (functionName == "calloc")
+        {
+            if (cs->arg_size() > 1)
+            {
+                edge->addArrSize(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(cs->getArgOperand(0)));
+                edge->addArrSize(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(cs->getArgOperand(1)));
+            }
+        }
+        else
+        {
+            if (cs->arg_size() > 0)
+            {
+                const llvm::Value* val = cs->getArgOperand(0);
+                SVFValue* svfval = LLVMModuleSet::getLLVMModuleSet()->getSVFValue(val);
+                edge->addArrSize(svfval);
+            }
+        }
+        return edge;
+    }
+
+    inline CopyStmt* addCopyEdge(NodeID src, NodeID dst, CopyStmt::CopyKind kind)
+    {
+        if(CopyStmt *edge = pag->addCopyStmt(src, dst, kind))
         {
             setCurrentBBAndValueForPAGEdge(edge);
             return edge;
         }
         return nullptr;
     }
+
+    inline CopyStmt::CopyKind getCopyKind(const Value* val)
+    {
+        // COPYVAL, ZEXT, SEXT, BITCAST, FPTRUNC, FPTOUI, FPTOSI, UITOFP, SITOFP, INTTOPTR, PTRTOINT
+        if (const Instruction* inst = SVFUtil::dyn_cast<Instruction>(val))
+        {
+            switch (inst->getOpcode())
+            {
+            case Instruction::ZExt:
+                return CopyStmt::ZEXT;
+            case Instruction::SExt:
+                return CopyStmt::SEXT;
+            case Instruction::BitCast:
+                return CopyStmt::BITCAST;
+            case Instruction ::Trunc:
+                return CopyStmt::TRUNC;
+            case Instruction::FPTrunc:
+                return CopyStmt::FPTRUNC;
+            case Instruction::FPToUI:
+                return CopyStmt::FPTOUI;
+            case Instruction::FPToSI:
+                return CopyStmt::FPTOSI;
+            case Instruction::UIToFP:
+                return CopyStmt::UITOFP;
+            case Instruction::SIToFP:
+                return CopyStmt::SITOFP;
+            case Instruction::IntToPtr:
+                return CopyStmt::INTTOPTR;
+            case Instruction::PtrToInt:
+                return CopyStmt::PTRTOINT;
+            default:
+                return CopyStmt::COPYVAL;
+            }
+        }
+        assert (false && "Unknown cast inst!");
+    }
+
     /// Add Copy edge
     inline void addPhiStmt(NodeID res, NodeID opnd, const ICFGNode* pred)
     {

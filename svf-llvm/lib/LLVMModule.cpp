@@ -33,10 +33,12 @@
 #include "Util/SVFUtil.h"
 #include "SVF-LLVM/BasicTypes.h"
 #include "SVF-LLVM/LLVMUtil.h"
+#include "SVF-LLVM/CppUtil.h"
 #include "SVF-LLVM/BreakConstantExpr.h"
 #include "SVF-LLVM/SymbolTableBuilder.h"
 #include "MSSA/SVFGBuilder.h"
 #include "llvm/Support/FileSystem.h"
+#include "SVF-LLVM/ObjTypeInference.h"
 
 using namespace std;
 using namespace SVF;
@@ -73,8 +75,19 @@ bool LLVMModuleSet::preProcessed = false;
 
 LLVMModuleSet::LLVMModuleSet()
     : symInfo(SymbolTableInfo::SymbolInfo()),
-      svfModule(SVFModule::getSVFModule())
+      svfModule(SVFModule::getSVFModule()), typeInference(new ObjTypeInference())
 {
+}
+
+LLVMModuleSet::~LLVMModuleSet()
+{
+    delete typeInference;
+    typeInference = nullptr;
+}
+
+ObjTypeInference* LLVMModuleSet::getTypeInference()
+{
+    return typeInference;
 }
 
 SVFModule* LLVMModuleSet::buildSVFModule(Module &mod)
@@ -141,6 +154,7 @@ void LLVMModuleSet::build()
 
     buildFunToFunMap();
     buildGlobalDefToRepMap();
+    removeUnusedExtAPIs();
 
     if (Options::SVFMain())
         addSVFMain();
@@ -151,22 +165,19 @@ void LLVMModuleSet::build()
 
 void LLVMModuleSet::createSVFDataStructure()
 {
-    getSVFType(IntegerType::getInt8Ty(getContext()));
+    SVFType::svfI8Ty = getSVFType(getTypeInference()->int8Type());
+    SVFType::svfPtrTy = getSVFType(getTypeInference()->ptrType());
     // Functions need to be retrieved in the order of insertion
     // candidateDefs is the vector for all used defined functions
     // candidateDecls is the vector for all used declared functions
     std::vector<const Function*> candidateDefs, candidateDecls;
+
     for (Module& mod : modules)
     {
-        std::vector<Function*> removedFuncList;
         /// Function
         for (Function& func : mod.functions())
         {
-            if (isCalledExtFunction(&func))
-            {
-                removedFuncList.push_back(&func);
-            }
-            else if (func.isDeclaration())
+            if (func.isDeclaration())
             {
                 candidateDecls.push_back(&func);
             }
@@ -175,9 +186,8 @@ void LLVMModuleSet::createSVFDataStructure()
                 candidateDefs.push_back(&func);
             }
         }
-        /// Remove unused functions, annotations and global variables in extapi.bc
-        LLVMUtil::removeUnusedFuncsAndAnnotationsAndGlobalVariables(removedFuncList);
     }
+
     for (const Function* func: candidateDefs)
     {
         createSVFFunction(func);
@@ -226,9 +236,10 @@ void LLVMModuleSet::createSVFFunction(const Function* func)
         SVFUtil::cast<SVFFunctionType>(
             getSVFType(func->getFunctionType())),
         func->isDeclaration(), LLVMUtil::isIntrinsicFun(func),
-        func->hasAddressTaken(), func->isVarArg(), new SVFLoopAndDomInfo, LLVMUtil::getFunAnnotations(func));
-    svfFunc->setName(func->getName().str());
+        func->hasAddressTaken(), func->isVarArg(), new SVFLoopAndDomInfo);
     svfModule->addFunctionSet(svfFunc);
+    if (ExtFun2Annotations.find(func) != ExtFun2Annotations.end())
+        svfFunc->setAnnotations(ExtFun2Annotations[func]);
     addFunctionMap(func, svfFunc);
 
     for (const Argument& arg : func->args())
@@ -237,9 +248,7 @@ void LLVMModuleSet::createSVFFunction(const Function* func)
             getSVFType(arg.getType()), svfFunc, arg.getArgNo(),
             LLVMUtil::isArgOfUncalledFunction(&arg));
         // Setting up arg name
-        if (arg.hasName())
-            svfarg->setName(arg.getName().str());
-        else
+        if (!arg.hasName())
             svfarg->setName(std::to_string(arg.getArgNo()));
 
         svfFunc->addArgument(svfarg);
@@ -250,8 +259,6 @@ void LLVMModuleSet::createSVFFunction(const Function* func)
     {
         SVFBasicBlock* svfBB =
             new SVFBasicBlock(getSVFType(bb.getType()), svfFunc);
-        if (bb.hasName())
-            svfBB->setName(bb.getName().str());
         svfFunc->addBasicBlock(svfBB);
         addBasicBlockMap(&bb, svfBB);
         for (const Instruction& inst : bb)
@@ -259,7 +266,7 @@ void LLVMModuleSet::createSVFFunction(const Function* func)
             SVFInstruction* svfInst = nullptr;
             if (const CallBase* call = SVFUtil::dyn_cast<CallBase>(&inst))
             {
-                if (LLVMUtil::isVirtualCallSite(call))
+                if (cppUtil::isVirtualCallSite(call))
                     svfInst = new SVFVirtualCallInst(
                         getSVFType(call->getType()), svfBB,
                         call->getFunctionType()->isVarArg(),
@@ -349,9 +356,9 @@ void LLVMModuleSet::initSVFBasicBlock(const Function* func)
                 }
                 if(SVFVirtualCallInst* virtualCall = SVFUtil::dyn_cast<SVFVirtualCallInst>(svfcall))
                 {
-                    virtualCall->setVtablePtr(getSVFValue(LLVMUtil::getVCallVtblPtr(call)));
-                    virtualCall->setFunIdxInVtable(LLVMUtil::getVCallIdx(call));
-                    virtualCall->setFunNameOfVirtualCall(LLVMUtil::getFunNameOfVCallSite(call));
+                    virtualCall->setVtablePtr(getSVFValue(cppUtil::getVCallVtblPtr(call)));
+                    virtualCall->setFunIdxInVtable(cppUtil::getVCallIdx(call));
+                    virtualCall->setFunNameOfVirtualCall(cppUtil::getFunNameOfVCallSite(call));
                 }
                 for(u32_t i = 0; i < call->arg_size(); i++)
                 {
@@ -532,7 +539,6 @@ void LLVMModuleSet::loadModules(const std::vector<std::string> &moduleNameVec)
     // module instance; see the comment(s) in `buildSVFModule` and `loadExtAPIModules()`
 
     owned_ctx = std::make_unique<LLVMContext>();
-
     for (const std::string& moduleName : moduleNameVec)
     {
         if (!LLVMUtil::isIRFile(moduleName))
@@ -727,14 +733,14 @@ void LLVMModuleSet::addSVFMain()
         assert(mainMod && "Module with main function not found.");
         Module& M = *mainMod;
         // char **
-        Type* i8ptr2 = PointerType::getInt8PtrTy(M.getContext())->getPointerTo();
+        Type* ptr = PointerType::getUnqual(M.getContext());
         Type* i32 = IntegerType::getInt32Ty(M.getContext());
         // define void @svf.main(i32, i8**, i8**)
 #if (LLVM_VERSION_MAJOR >= 9)
         FunctionCallee svfmainFn = M.getOrInsertFunction(
                                        SVF_MAIN_FUNC_NAME,
                                        Type::getVoidTy(M.getContext()),
-                                       i32,i8ptr2,i8ptr2
+                                       i32,ptr,ptr
                                    );
         Function* svfmain = SVFUtil::dyn_cast<Function>(svfmainFn.getCallee());
 #else
@@ -773,6 +779,57 @@ void LLVMModuleSet::addSVFMain()
         }
         // return;
         Builder.CreateRetVoid();
+    }
+}
+
+void LLVMModuleSet::collectExtFunAnnotations(const Module* mod)
+{
+    GlobalVariable *glob = mod->getGlobalVariable("llvm.global.annotations");
+    if (glob == nullptr || !glob->hasInitializer())
+        return;
+
+    ConstantArray *ca = SVFUtil::dyn_cast<ConstantArray>(glob->getInitializer());
+    if (ca == nullptr)
+        return;
+
+    for (unsigned i = 0; i < ca->getNumOperands(); ++i)
+    {
+        ConstantStruct *structAn = SVFUtil::dyn_cast<ConstantStruct>(ca->getOperand(i));
+        if (structAn == nullptr || structAn->getNumOperands() == 0)
+            continue;
+
+        // Check if the annotation is for a function
+        Function* fun = nullptr;
+        GlobalVariable *annotateStr = nullptr;
+        /// Non-opaque pointer
+        if (ConstantExpr *expr = SVFUtil::dyn_cast<ConstantExpr>(structAn->getOperand(0)))
+        {
+            if (expr->getOpcode() == Instruction::BitCast && SVFUtil::isa<Function>(expr->getOperand(0)))
+                fun = SVFUtil::cast<Function>(expr->getOperand(0));
+
+            ConstantExpr *note = SVFUtil::cast<ConstantExpr>(structAn->getOperand(1));
+            if (note->getOpcode() != Instruction::GetElementPtr)
+                continue;
+
+            annotateStr = SVFUtil::dyn_cast<GlobalVariable>(note->getOperand(0));
+        }
+        /// Opaque pointer
+        else
+        {
+            fun = SVFUtil::dyn_cast<Function>(structAn->getOperand(0));
+            annotateStr = SVFUtil::dyn_cast<GlobalVariable>(structAn->getOperand(1));
+        }
+
+        if (!fun || annotateStr == nullptr || !annotateStr->hasInitializer())
+            continue;;
+
+        ConstantDataSequential *data = SVFUtil::dyn_cast<ConstantDataSequential>(annotateStr->getInitializer());
+        if (data && data->isString())
+        {
+            std::string annotation = data->getAsString().str();
+            if (!annotation.empty())
+                ExtFun2Annotations[fun].push_back(annotation);
+        }
     }
 }
 
@@ -850,6 +907,7 @@ void LLVMModuleSet::buildFunToFunMap()
         // extapi.bc functions
         if (mod.getName().str() == ExtAPI::getExtAPI()->getExtBcPath())
         {
+            collectExtFunAnnotations(&mod);
             for (const Function& fun : mod.functions())
             {
                 // there is main declaration in ext bc, it should be mapped to
@@ -871,18 +929,20 @@ void LLVMModuleSet::buildFunToFunMap()
                 {
                     extFuncs.insert(&fun);
                     // Find overwrite functions in extapi.bc
-                    std::vector<std::string> annotations =
-                        LLVMUtil::getFunAnnotations(&fun);
-                    auto it =
-                        std::find_if(annotations.begin(), annotations.end(),
-                                     [&](const std::string& annotation)
+                    if (ExtFun2Annotations.find(&fun) != ExtFun2Annotations.end())
                     {
-                        return annotation.find("OVERWRITE") !=
-                               std::string::npos;
-                    });
-                    if (it != annotations.end())
-                    {
-                        overwriteExtFuncs.insert(&fun);
+                        std::vector<std::string> annotations = ExtFun2Annotations[&fun];
+                        auto it =
+                            std::find_if(annotations.begin(), annotations.end(),
+                                         [&](const std::string& annotation)
+                        {
+                            return annotation.find("OVERWRITE") !=
+                                   std::string::npos;
+                        });
+                        if (it != annotations.end())
+                        {
+                            overwriteExtFuncs.insert(&fun);
+                        }
                     }
                 }
             }
@@ -970,11 +1030,9 @@ void LLVMModuleSet::buildFunToFunMap()
     /// App Func decl -> SVF extern Func def
     for (const Function* fdecl : funDecls)
     {
+        std::string declName = LLVMUtil::restoreFuncName(fdecl->getName().str());
         for (const Function* extfun : extFuncs)
         {
-            std::string declName = fdecl->getName().str();
-            // Since C function names cannot include '.', change the function name from llvm.memcpy.p0i8.p0i8.i64 to llvm_memcpy_p0i8_p0i8_i64."
-            std::replace(declName.begin(), declName.end(), '.', '_');
             if (extfun->getName().str().compare(declName) == 0)
             {
                 // AppDecl -> ExtDef in Table 1
@@ -995,9 +1053,10 @@ void LLVMModuleSet::buildFunToFunMap()
     /// App Func def -> SVF extern Func def
     for (const Function* appfunc : funDefs)
     {
+        std::string appfuncName = LLVMUtil::restoreFuncName(appfunc->getName().str());
         for (const Function* owfunc : overwriteExtFuncs)
         {
-            if (appfunc->getName().str().compare(owfunc->getName().str()) == 0)
+            if (appfuncName.compare(owfunc->getName().str()) == 0)
             {
                 Type* returnType1 = appfunc->getReturnType();
                 Type* returnType2 = owfunc->getReturnType();
@@ -1101,6 +1160,25 @@ void LLVMModuleSet::buildGlobalDefToRepMap()
     }
 }
 
+void LLVMModuleSet::removeUnusedExtAPIs()
+{
+    Set<Function*> removedFuncList;
+    for (Module& mod : modules)
+    {
+        if (mod.getName().str() != ExtAPI::getExtAPI()->getExtBcPath())
+            continue;
+        for (Function& func : mod.functions())
+        {
+            if (isCalledExtFunction(&func))
+            {
+                removedFuncList.insert(&func);
+                ExtFun2Annotations.erase(&func);
+            }
+        }
+    }
+    LLVMUtil::removeUnusedFuncsAndAnnotationsAndGlobalVariables(removedFuncList);
+}
+
 // Dump modules to files
 void LLVMModuleSet::dumpModulesToFile(const std::string& suffix)
 {
@@ -1131,6 +1209,8 @@ void LLVMModuleSet::setValueAttr(const Value* val, SVFValue* svfvalue)
 {
     SVFValue2LLVMValue[svfvalue] = val;
 
+    if(val->hasName())
+        svfvalue->setName(val->getName().str());
     if (LLVMUtil::isPtrInUncalledFunction(val))
         svfvalue->setPtrInUncalledFunction();
     if (LLVMUtil::isConstDataOrAggData(val))
@@ -1180,8 +1260,28 @@ SVFConstantData* LLVMModuleSet::getSVFConstantData(const ConstantData* cd)
         {
             double dval = 0;
             // TODO: Why only double is considered? What about float?
-            if(cfp->isNormalFP() &&  (&cfp->getValueAPF().getSemantics()== &llvm::APFloatBase::IEEEdouble()))
-                dval =  cfp->getValueAPF().convertToDouble();
+            if (cfp->isNormalFP())
+            {
+                const llvm::fltSemantics& semantics = cfp->getValueAPF().getSemantics();
+                if (&semantics == &llvm::APFloat::IEEEhalf() ||
+                        &semantics == &llvm::APFloat::IEEEsingle() ||
+                        &semantics == &llvm::APFloat::IEEEdouble() ||
+                        &semantics == &llvm::APFloat::IEEEquad() ||
+                        &semantics == &llvm::APFloat::x87DoubleExtended())
+                {
+                    dval = cfp->getValueAPF().convertToDouble();
+                }
+                else
+                {
+                    assert (false && "Unsupported floating point type");
+                    abort();
+                }
+            }
+            else
+            {
+                // other cfp type, like isZero(), isInfinity(), isNegative(), etc.
+                // do nothing
+            }
             svfcd = new SVFConstantFP(getSVFType(cd->getType()), dval);
         }
         else if(SVFUtil::isa<ConstantPointerNull>(cd))
@@ -1191,8 +1291,6 @@ SVFConstantData* LLVMModuleSet::getSVFConstantData(const ConstantData* cd)
         else
             svfcd = new SVFConstantData(getSVFType(cd->getType()));
 
-        if (cd->hasName())
-            svfcd->setName(cd->getName().str());
 
         svfModule->addConstant(svfcd);
         addConstantDataMap(cd,svfcd);
@@ -1282,13 +1380,6 @@ SVFType* LLVMModuleSet::getSVFType(const Type* T)
     SVFType* svfType = addSVFTypeInfo(T);
     StInfo* stinfo = collectTypeInfo(T);
     svfType->setTypeInfo(stinfo);
-    /// TODO: set the void* to every element for now (imprecise)
-    /// For example,
-    /// [getPointerTo(): char   ----> i8*]
-    /// [getPointerTo(): int    ----> i8*]
-    /// [getPointerTo(): struct ----> i8*]
-    PointerType* ptrTy = PointerType::getInt8PtrTy(getContext());
-    svfType->setPointerTo(SVFUtil::cast<SVFPointerType>(getSVFType(ptrTy)));
     return svfType;
 }
 
@@ -1329,8 +1420,8 @@ SVFType* LLVMModuleSet::addSVFTypeInfo(const Type* T)
     assert(LLVMType2SVFType.find(T) == LLVMType2SVFType.end() &&
            "SVFType has been added before");
 
-    // add SVFType's LLVM byte size iff T isSized(), otherwise byteSize is 0(default value)
-    u32_t byteSize = 0;
+    // add SVFType's LLVM byte size iff T isSized(), otherwise byteSize is 1 (default value)
+    u32_t byteSize = 1;
     if (T->isSized())
     {
         const llvm::DataLayout &DL = LLVMModuleSet::getLLVMModuleSet()->
@@ -1371,7 +1462,7 @@ SVFType* LLVMModuleSet::addSVFTypeInfo(const Type* T)
     else
     {
         std::string buffer;
-        auto ot = new SVFOtherType(byteSize, T->isSingleValueType());
+        auto ot = new SVFOtherType(T->isSingleValueType(), byteSize);
         llvm::raw_string_ostream(buffer) << *T;
         ot->setRepr(std::move(buffer));
         svftype = ot;
@@ -1379,14 +1470,6 @@ SVFType* LLVMModuleSet::addSVFTypeInfo(const Type* T)
 
     symInfo->addTypeInfo(svftype);
     LLVMType2SVFType[T] = svftype;
-    if (const PointerType* pt = SVFUtil::dyn_cast<PointerType>(T))
-    {
-        //cast svftype to SVFPointerType
-        SVFPointerType* svfPtrType = SVFUtil::dyn_cast<SVFPointerType>(svftype);
-        assert(svfPtrType && "this is not SVFPointerType");
-        // TODO: getPtrElementType to be removed
-        svfPtrType->setPtrElementType(getSVFType(LLVMUtil::getPtrElementType(pt)));
-    }
 
     return svftype;
 }

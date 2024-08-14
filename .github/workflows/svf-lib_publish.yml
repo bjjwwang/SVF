@@ -15,9 +15,11 @@ jobs:
   publish:
     if: github.repository == 'SVF-tools/SVF'
     runs-on: ${{ matrix.os }}
+    env:
+      XCODE_VERSION: '15.3.0'  # Define Xcode version here to reuse it
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-11]
+        os: [ubuntu-latest, macos-latest]
     steps:
       # checkout the repo
       - uses: actions/checkout@v2
@@ -26,11 +28,11 @@ jobs:
         if: runner.os == 'macOS'
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 12.5.1
+          xcode-version: ${{ env.XCODE_VERSION }}
       - name: mac-setup-workaround
         if: runner.os == 'macOS'
         run: |
-          ln -sfn /Applications/Xcode_12.5.1.app /Applications/Xcode.app
+          ln -sfn /Applications/Xcode_${{ env.XCODE_VERSION }}.app /Applications/Xcode.app
           brew install astyle
       - name: ubuntu-setup
         if: runner.os == 'Linux'
@@ -38,7 +40,7 @@ jobs:
           sudo apt-get update
           sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
           sudo apt-get update
-          sudo apt-get install cmake gcc g++ nodejs doxygen graphviz
+          sudo apt-get install cmake gcc g++ nodejs doxygen graphviz libncurses5-dev libtinfo5 libzstd-dev
           sudo apt-get update
           sudo apt-get install -y astyle
       - name: env-setup
@@ -53,6 +55,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           echo $(pwd)
+          git pull
           astyle --style=allman -n -r "*.h" "*.cpp"
           if [ ! -z $FILES_CHANGED ]; then clang-format -i $FILES_CHANGED; fi
           git clone "https://github.com/SVF-tools/Test-Suite.git";
@@ -69,7 +72,6 @@ jobs:
             cd $GITHUB_WORKSPACE
             echo $(pwd)
             git status
-            git pull
             git add .
             if [ -n "$(git status -s)" ]; then git commit -m"SVF code formatter"; fi
             git push https://yuleisui:${{secrets.yulei_git_key}}@github.com/SVF-tools/SVF.git   HEAD:master
@@ -114,12 +116,16 @@ jobs:
             cd ./SVF-npm
             git fetch origin
             git rebase origin/master
-            cp -rf $GITHUB_WORKSPACE/svf/include SVF-${osVersion}/svf
-            cp -rf $GITHUB_WORKSPACE/svf-llvm/include SVF-${osVersion}/svf-llvm
-            cp -f $GITHUB_WORKSPACE/Release-build/svf-llvm/libSvfLLVM.a SVF-${osVersion}/Release-build/svf-llvm/libSvfLLVM.a
-            cp -f $GITHUB_WORKSPACE/Release-build/svf-llvm/extapi.bc SVF-${osVersion}/Release-build/svf-llvm/extapi.bc
-            cp -f $GITHUB_WORKSPACE/Release-build/svf/libSvfCore.a SVF-${osVersion}/Release-build/svf/libSvfCore.a
-            cp -rf $GITHUB_WORKSPACE/Release-build/include SVF-${osVersion}/Release-build
+            rm -rf SVF-${osVersion}/*
+            git rm --cached -rf SVF-${osVersion}/*
+            if [ ! -d "SVF-${osVersion}/Release-build/" ]; then mkdir -p "SVF-${osVersion}/Release-build"; fi
+            rm -rf $GITHUB_WORKSPACE/Release-build/bin/*.dot
+            rm -rf $GITHUB_WORKSPACE/Release-build/bin/*.json
+            cp -rf $GITHUB_WORKSPACE/Release-build/include SVF-${osVersion}/Release-build/
+            cp -rf $GITHUB_WORKSPACE/svf/include SVF-${osVersion}/Release-build/
+            cp -rf $GITHUB_WORKSPACE/svf-llvm/include SVF-${osVersion}/Release-build/
+            cp -rf $GITHUB_WORKSPACE/Release-build/lib SVF-${osVersion}/Release-build/
+            cp -rf $GITHUB_WORKSPACE/Release-build/bin SVF-${osVersion}/Release-build/
             git add .
             if [ -n "$(git status -s)" ]; then git commit -m'Update svflib' ; fi
             npm version patch
@@ -127,9 +133,9 @@ jobs:
             cd $GITHUB_WORKSPACE
 
       # publish svf
-      - uses: actions/setup-node@v2
+      - uses: actions/setup-node@v3
         with:
-          node-version: 12
+          node-version: 18
           registry-url: https://registry.npmjs.org/
       - name: publish-svf
         if: |

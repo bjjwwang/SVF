@@ -28,19 +28,18 @@
  */
 
 #include "SVF-LLVM/SVFIRBuilder.h"
-#include "SVFIR/SVFModule.h"
-#include "Util/SVFUtil.h"
 #include "SVF-LLVM/BasicTypes.h"
-#include "SVF-LLVM/LLVMUtil.h"
-#include "Util/CppUtil.h"
-#include "SVFIR/SVFValue.h"
-#include "SVFIR/PAGBuilderFromFile.h"
-#include "SVF-LLVM/LLVMLoopAnalysis.h"
-#include "Util/Options.h"
 #include "SVF-LLVM/CHGBuilder.h"
-#include "SVFIR/SVFFileSystem.h"
+#include "SVF-LLVM/CppUtil.h"
+#include "SVF-LLVM/LLVMLoopAnalysis.h"
+#include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/SymbolTableBuilder.h"
-
+#include "SVFIR/PAGBuilderFromFile.h"
+#include "SVFIR/SVFFileSystem.h"
+#include "SVFIR/SVFModule.h"
+#include "SVFIR/SVFValue.h"
+#include "Util/Options.h"
+#include "Util/SVFUtil.h"
 
 using namespace std;
 using namespace SVF;
@@ -291,7 +290,7 @@ bool SVFIRBuilder::computeGepOffset(const User *V, AccessPath& ap)
 
         assert((prevPtrOperand && svfGepTy->isPointerTy()) == false &&
                "Expect no more than one gep operand to be of a pointer type");
-        if(svfGepTy->isPointerTy()) prevPtrOperand = true;
+        if(!prevPtrOperand && svfGepTy->isPointerTy()) prevPtrOperand = true;
         const Value* offsetVal = gi.getOperand();
         const SVFValue* offsetSvfVal = LLVMModuleSet::getLLVMModuleSet()->getSVFValue(offsetVal);
         assert(gepTy != offsetVal->getType() && "iteration and operand have the same type?");
@@ -323,7 +322,7 @@ bool SVFIRBuilder::computeGepOffset(const User *V, AccessPath& ap)
             // If it's a non-constant offset access
             // If its point-to target is struct or array, it's likely an array accessing (%result = gep %struct.A* %a, i32 %non-const-index)
             // If its point-to target is single value (pointer arithmetic), then it's a variant gep (%result = gep i8* %p, i32 %non-const-index)
-            if(!op && gepTy->isPointerTy() && LLVMUtil::getPointeeType(V)->isSingleValueType())
+            if(!op && gepTy->isPointerTy() && gepOp->getSourceElementType()->isSingleValueType())
             {
                 isConst = false;
             }
@@ -375,7 +374,7 @@ void SVFIRBuilder::processCE(const Value* val)
             const SVFValue* cval = getCurrentValue();
             const SVFBasicBlock* cbb = getCurrentBB();
             setCurrentLocation(castce, nullptr);
-            addCopyEdge(pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(opnd)), pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(castce)));
+            addCopyEdge(pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(opnd)), pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(castce)), CopyStmt::BITCAST);
             setCurrentLocation(cval, cbb);
         }
         else if (const ConstantExpr* selectce = isSelectConstantExpr(ref))
@@ -398,7 +397,13 @@ void SVFIRBuilder::processCE(const Value* val)
         // if we meet a int2ptr, then it points-to black hole
         else if (const ConstantExpr* int2Ptrce = isInt2PtrConstantExpr(ref))
         {
-            addGlobalBlackHoleAddrEdge(pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(int2Ptrce)), int2Ptrce);
+            const Constant* opnd = int2Ptrce->getOperand(0);
+            processCE(opnd);
+            const SVFBasicBlock* cbb = getCurrentBB();
+            const SVFValue* cval = getCurrentValue();
+            setCurrentLocation(int2Ptrce, nullptr);
+            addCopyEdge(pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(opnd)), pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(int2Ptrce)), CopyStmt::INTTOPTR);
+            setCurrentLocation(cval, cbb);
         }
         else if (const ConstantExpr* ptr2Intce = isPtr2IntConstantExpr(ref))
         {
@@ -407,7 +412,7 @@ void SVFIRBuilder::processCE(const Value* val)
             const SVFBasicBlock* cbb = getCurrentBB();
             const SVFValue* cval = getCurrentValue();
             setCurrentLocation(ptr2Intce, nullptr);
-            addCopyEdge(pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(opnd)), pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(ptr2Intce)));
+            addCopyEdge(pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(opnd)), pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(ptr2Intce)), CopyStmt::PTRTOINT);
             setCurrentLocation(cval, cbb);
         }
         else if(isTruncConstantExpr(ref) || isCmpConstantExpr(ref))
@@ -531,12 +536,12 @@ void SVFIRBuilder::InitialGlobal(const GlobalVariable *gvar, Constant *C,
             addStoreEdge(src, field);
             /// src should not point to anything yet
             if (C->getType()->isPtrOrPtrVectorTy() && src != pag->getNullPtr())
-                addCopyEdge(pag->getNullPtr(), src);
+                addCopyEdge(pag->getNullPtr(), src, CopyStmt::COPYVAL);
         }
     }
     else if (SVFUtil::isa<ConstantArray, ConstantStruct>(C))
     {
-        if(LLVMUtil::isValVtbl(gvar) && !Options::VtableInSVFIR())
+        if(cppUtil::isValVtbl(gvar) && !Options::VtableInSVFIR())
             return;
         for (u32_t i = 0, e = C->getNumOperands(); i != e; i++)
         {
@@ -616,7 +621,7 @@ void SVFIRBuilder::visitGlobal(SVFModule* svfModule)
             NodeID src = pag->getValueNode(LLVMModuleSet::getLLVMModuleSet()->getSVFValue(alias->getAliasee()));
             processCE(alias->getAliasee());
             setCurrentLocation(alias, nullptr);
-            addCopyEdge(src,dst);
+            addCopyEdge(src, dst, CopyStmt::COPYVAL);
         }
     }
 }
@@ -636,7 +641,7 @@ void SVFIRBuilder::visitAllocaInst(AllocaInst &inst)
 
     NodeID src = getObjectNode(&inst);
 
-    addAddrEdge(src, dst);
+    addAddrWithStackArraySz(src, dst, inst);
 
 }
 
@@ -733,19 +738,9 @@ void SVFIRBuilder::visitCastInst(CastInst &inst)
     DBOUT(DPAGBuild, outs() << "process cast  " << LLVMModuleSet::getLLVMModuleSet()->getSVFValue(&inst)->toString() << " \n");
     NodeID dst = getValueNode(&inst);
 
-    if (SVFUtil::isa<IntToPtrInst>(&inst))
-    {
-        addBlackHoleAddrEdge(dst);
-    }
-    else
-    {
-        const Value* opnd = inst.getOperand(0);
-        if (!SVFUtil::isa<PointerType>(opnd->getType()))
-            opnd = stripAllCasts(opnd);
-
-        NodeID src = getValueNode(opnd);
-        addCopyEdge(src, dst);
-    }
+    const Value* opnd = inst.getOperand(0);
+    NodeID src = getValueNode(opnd);
+    addCopyEdge(src, dst, getCopyKind(&inst));
 }
 
 /*!
@@ -981,7 +976,7 @@ void SVFIRBuilder::visitVAArgInst(VAArgInst &inst)
     NodeID dst = getValueNode(&inst);
     Value* opnd = inst.getPointerOperand();
     NodeID src = getValueNode(opnd);
-    addCopyEdge(src,dst);
+    addCopyEdge(src, dst, CopyStmt::COPYVAL);
 }
 
 /// <result> = freeze ty <val>
@@ -995,7 +990,7 @@ void SVFIRBuilder::visitFreezeInst(FreezeInst &inst)
     {
         Value* opnd = inst.getOperand(i);
         NodeID src = getValueNode(opnd);
-        addCopyEdge(src,dst);
+        addCopyEdge(src, dst, CopyStmt::COPYVAL);
     }
 }
 
@@ -1084,42 +1079,6 @@ const Value* SVFIRBuilder::getBaseValueForExtArg(const Value* V)
         if(totalidx == 0 && !SVFUtil::isa<StructType>(value->getType()))
             value = gep->getPointerOperand();
     }
-
-    // if the argument of memcpy is the result of an allocation (1) or a casted load instruction (2),
-    // further steps are necessary to find the correct base value
-    //
-    // (1)
-    // %call   = malloc 80
-    // %0      = bitcast i8* %call to %struct.A*
-    // %1      = bitcast %struct.B* %param to i8*
-    // call void memcpy(%call, %1, 80)
-    //
-    // (2)
-    // %0 = bitcast %struct.A* %param to i8*
-    // %2 = bitcast %struct.B** %arrayidx to i8**
-    // %3 = load i8*, i8** %2
-    // call void @memcpy(%0, %3, 80)
-    LLVMContext &cxt = LLVMModuleSet::getLLVMModuleSet()->getContext();
-    if (value->getType() == PointerType::getInt8PtrTy(cxt))
-    {
-        // (1)
-        if (const CallBase* cb = SVFUtil::dyn_cast<CallBase>(value))
-        {
-            const SVFInstruction* svfInst = LLVMModuleSet::getLLVMModuleSet()->getSVFInstruction(cb);
-            if (SVFUtil::isHeapAllocExtCallViaRet(svfInst))
-            {
-                if (const Value* bitCast = getFirstUseViaCastInst(cb))
-                    return bitCast;
-            }
-        }
-        // (2)
-        else if (const LoadInst* load = SVFUtil::dyn_cast<LoadInst>(value))
-        {
-            if (const BitCastInst* bitCast = SVFUtil::dyn_cast<BitCastInst>(load->getPointerOperand()))
-                return bitCast->getOperand(0);
-        }
-    }
-
     return value;
 }
 
@@ -1199,7 +1158,7 @@ void SVFIRBuilder::sanityCheck()
  */
 NodeID SVFIRBuilder::getGepValVar(const Value* val, const AccessPath& ap, const SVFType* elementType)
 {
-    NodeID base = pag->getBaseValVar(getValueNode(val));
+    NodeID base = getValueNode(val);
     NodeID gepval = pag->getGepValVar(curVal, base, ap);
     if (gepval==UINT_MAX)
     {
@@ -1220,7 +1179,9 @@ NodeID SVFIRBuilder::getGepValVar(const Value* val, const AccessPath& ap, const 
         const SVFBasicBlock* cbb = getCurrentBB();
         setCurrentLocation(curVal, nullptr);
         LLVMModuleSet* llvmmodule = LLVMModuleSet::getLLVMModuleSet();
-        NodeID gepNode= pag->addGepValNode(curVal, llvmmodule->getSVFValue(val),ap, NodeIDAllocator::get()->allocateValueId(),elementType->getPointerTo());
+        NodeID gepNode = pag->addGepValNode(curVal, llvmmodule->getSVFValue(val), ap,
+                                            NodeIDAllocator::get()->allocateValueId(),
+                                            llvmmodule->getSVFType(PointerType::getUnqual(llvmmodule->getContext())));
         addGepEdge(base, gepNode, ap, true);
         setCurrentLocation(cval, cbb);
         return gepNode;

@@ -434,14 +434,11 @@ public:
         return SymbolTableInfo::isConstantObj(id) ||
                obj->isConstDataOrConstGlobal();
     }
-    /// Whether an object can point to any other object or any of its fields is a pointer type.
-    bool isNonPointerObj(NodeID id) const;
     //@}
 
     /// Base and Offset methods for Value and Object node
     //@{
     /// Get a base pointer node given a field pointer
-    NodeID getBaseValVar(NodeID nodeId);
     inline NodeID getBaseObjVar(NodeID id) const
     {
         return getBaseObj(id)->getId();
@@ -487,7 +484,8 @@ private:
         bool added = KindToSVFStmtSetMap[edge->getEdgeKind()].insert(edge).second;
         (void)added; // Suppress warning of unused variable under release build
         assert(added && "duplicated edge, not added!!!");
-        if (edge->isPTAEdge())
+        /// this is a pointer-related SVFStmt if (1) both RHS and LHS are pointers or (2) this an int2ptr statment, i.e., LHS = int2ptr RHS
+        if (edge->isPTAEdge() || (SVFUtil::isa<CopyStmt>(edge) && SVFUtil::cast<CopyStmt>(edge)->isInt2Ptr()))
         {
             totalPTAPAGEdge++;
             KindToPTASVFStmtSetMap[edge->getEdgeKind()].insert(edge);
@@ -641,7 +639,8 @@ private:
     /// Add Address edge
     AddrStmt* addAddrStmt(NodeID src, NodeID dst);
     /// Add Copy edge
-    CopyStmt* addCopyStmt(NodeID src, NodeID dst);
+    CopyStmt* addCopyStmt(NodeID src, NodeID dst, CopyStmt::CopyKind type);
+
     /// Add phi node information
     PhiStmt*  addPhiStmt(NodeID res, NodeID opnd, const ICFGNode* pred);
     /// Add SelectStmt

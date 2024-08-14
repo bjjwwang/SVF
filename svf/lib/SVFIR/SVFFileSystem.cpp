@@ -24,21 +24,21 @@ SVFType* createSVFType(SVFType::GNodeK kind, bool isSingleValTy)
         ABORT_MSG("Creation of RAW SVFType isn't allowed");
     case SVFType::SVFPointerTy:
         ABORT_IFNOT(isSingleValTy, "Pointer type must be single-valued");
-        return new SVFPointerType(0);
+        return new SVFPointerType();
     case SVFType::SVFIntegerTy:
         ABORT_IFNOT(isSingleValTy, "Integer type must be single-valued");
-        return new SVFIntegerType(0);
+        return new SVFIntegerType();
     case SVFType::SVFFunctionTy:
         ABORT_IFNOT(!isSingleValTy, "Function type must be multi-valued");
         return new SVFFunctionType(nullptr);
     case SVFType::SVFStructTy:
         ABORT_IFNOT(!isSingleValTy, "Struct type must be multi-valued");
-        return new SVFStructType(0);
+        return new SVFStructType();
     case SVFType::SVFArrayTy:
         ABORT_IFNOT(!isSingleValTy, "Array type must be multi-valued");
-        return new SVFArrayType(0);
+        return new SVFArrayType();
     case SVFType::SVFOtherTy:
-        return new SVFOtherType(0, isSingleValTy);
+        return new SVFOtherType(isSingleValTy);
     }
 }
 
@@ -54,7 +54,7 @@ static SVFValue* createSVFValue(SVFValue::GNodeK kind, const SVFType* type,
         case SVFValue::SVFVal:
             ABORT_MSG("Creation of RAW SVFValue isn't allowed");
         case SVFValue::SVFFunc:
-            return new SVFFunction(type, {}, {}, {}, {}, {}, {}, {});
+            return new SVFFunction(type, {}, {}, {}, {}, {}, {});
         case SVFValue::SVFBB:
             return new SVFBasicBlock(type, {});
         case SVFValue::SVFInst:
@@ -478,7 +478,6 @@ cJSON* SVFIRWriter::contentToJson(const SVFType* type)
     cJSON* root = jsonCreateObject();
     JSON_WRITE_FIELD(root, type, kind);
     JSON_WRITE_FIELD(root, type, isSingleValTy);
-    JSON_WRITE_FIELD(root, type, getPointerToTy);
     JSON_WRITE_FIELD(root, type, typeinfo);
     return root;
 }
@@ -486,7 +485,6 @@ cJSON* SVFIRWriter::contentToJson(const SVFType* type)
 cJSON* SVFIRWriter::contentToJson(const SVFPointerType* type)
 {
     cJSON* root = contentToJson(static_cast<const SVFType*>(type));
-    JSON_WRITE_FIELD(root, type, ptrElementType);
     return root;
 }
 
@@ -694,7 +692,9 @@ cJSON* SVFIRWriter::contentToJson(const AddrStmt* edge)
 
 cJSON* SVFIRWriter::contentToJson(const CopyStmt* edge)
 {
-    return contentToJson(static_cast<const AssignStmt*>(edge));
+    cJSON* root = contentToJson(static_cast<const AssignStmt*>(edge));
+    JSON_WRITE_FIELD(root, edge, copyKind);
+    return root;
 }
 
 cJSON* SVFIRWriter::contentToJson(const StoreStmt* edge)
@@ -2057,6 +2057,7 @@ void SVFIRReader::fill(const cJSON*& fieldJson, AddrStmt* stmt)
 void SVFIRReader::fill(const cJSON*& fieldJson, CopyStmt* stmt)
 {
     fill(fieldJson, static_cast<AssignStmt*>(stmt));
+    JSON_READ_FIELD_FWD(fieldJson, stmt, copyKind);
 }
 
 void SVFIRReader::fill(const cJSON*& fieldJson, StoreStmt* stmt)
@@ -2496,14 +2497,12 @@ void SVFIRReader::virtFill(const cJSON*& fieldJson, SVFType* type)
 void SVFIRReader::fill(const cJSON*& fieldJson, SVFType* type)
 {
     // kind has already been read
-    JSON_READ_FIELD_FWD(fieldJson, type, getPointerToTy);
     JSON_READ_FIELD_FWD(fieldJson, type, typeinfo);
 }
 
 void SVFIRReader::fill(const cJSON*& fieldJson, SVFPointerType* type)
 {
     fill(fieldJson, static_cast<SVFType*>(type));
-    JSON_READ_FIELD_FWD(fieldJson, type, ptrElementType);
 }
 
 void SVFIRReader::fill(const cJSON*& fieldJson, SVFIntegerType* type)

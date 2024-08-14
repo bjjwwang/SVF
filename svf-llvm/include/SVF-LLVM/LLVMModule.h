@@ -31,7 +31,6 @@
 #define INCLUDE_SVF_FE_LLVMMODULE_H_
 
 #include "SVF-LLVM/BasicTypes.h"
-#include "Util/CppUtil.h"
 #include "SVFIR/SVFValue.h"
 #include "SVFIR/SVFModule.h"
 #include "Util/Options.h"
@@ -40,6 +39,7 @@ namespace SVF
 {
 
 class SymbolTableInfo;
+class ObjTypeInference;
 
 class LLVMModuleSet
 {
@@ -61,6 +61,7 @@ public:
     typedef Map<const SVFValue*, const Value*> SVFValue2LLVMValueMap;
     typedef Map<const Type*, SVFType*> LLVMType2SVFTypeMap;
     typedef Map<const Type*, StInfo*> Type2TypeInfoMap;
+    typedef Map<const Function*,  std::vector<std::string>> Fun2AnnoMap;
 
 private:
     static LLVMModuleSet* llvmModuleSet;
@@ -77,6 +78,8 @@ private:
     FunDefToDeclsMapTy FunDefToDeclsMap;
     /// Record some "sse_" function declarations used in other ext function definition, e.g., svf_ext_foo(), and svf_ext_foo() used in app functions
     FunctionSetType ExtFuncsVec;
+    /// Record annotations of function in extapi.bc
+    Fun2AnnoMap ExtFun2Annotations;
     /// Global definition to a rep definition map
     GlobalDefToRepMapTy GlobalDefToRepMap;
 
@@ -89,6 +92,7 @@ private:
     SVFValue2LLVMValueMap SVFValue2LLVMValue;
     LLVMType2SVFTypeMap LLVMType2SVFType;
     Type2TypeInfoMap Type2TypeInfo;
+    ObjTypeInference* typeInference;
 
     /// Constructor
     LLVMModuleSet();
@@ -96,7 +100,7 @@ private:
     void build();
 
 public:
-    ~LLVMModuleSet() = default;
+    ~LLVMModuleSet();
 
     static inline LLVMModuleSet* getLLVMModuleSet()
     {
@@ -322,10 +326,19 @@ public:
         return it->second;
     }
 
-
     Module* getMainLLVMModule() const
     {
-        return getModule(0);
+        assert(!empty() && "empty LLVM module!!");
+        for (size_t i = 0; i < getModuleNum(); ++i)
+        {
+            Module& module = getModuleRef(i);
+            if (module.getName().str() != ExtAPI::getExtAPI()->getExtBcPath())
+            {
+                return &module;
+            }
+        }
+        assert(false && "no main module found!");
+        return nullptr;
     }
 
     LLVMContext& getContext() const
@@ -343,6 +356,8 @@ public:
     SVFType* getSVFType(const Type* T);
     /// Get LLVM Type
     const Type* getLLVMType(const SVFType* T) const;
+
+    ObjTypeInference* getTypeInference();
 
 private:
     /// Create SVFTypes
@@ -374,6 +389,8 @@ private:
     /// Invoke llvm passes to modify module
     void prePassSchedule();
     void buildSymbolTable() const;
+    void collectExtFunAnnotations(const Module* mod);
+    void removeUnusedExtAPIs();
 };
 
 } // End namespace SVF

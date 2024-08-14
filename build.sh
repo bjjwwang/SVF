@@ -6,7 +6,7 @@
 # Dependencies include: build-essential libncurses5 libncurses-dev cmake zlib1g-dev
 set -e # exit on first error
 
-jobs=4
+jobs=8
 
 #########
 # VARs and Links
@@ -15,18 +15,18 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 SVFHOME="${SCRIPT_DIR}"
 sysOS=$(uname -s)
 arch=$(uname -m)
-MacLLVM="https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.0/clang+llvm-14.0.0-x86_64-apple-darwin.tar.xz"
-UbuntuLLVM="https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.0/clang+llvm-14.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz"
-UbuntuArmLLVM="https://github.com/llvm/llvm-project/releases/download/llvmorg-14.0.0/clang+llvm-14.0.0-aarch64-linux-gnu.tar.xz"
-SourceLLVM="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-14.0.0.zip"
-MacZ3="https://github.com/Z3Prover/z3/releases/download/z3-4.8.8/z3-4.8.8-x64-osx-10.14.6.zip"
-MacArmZ3="https://github.com/Z3Prover/z3/releases/download/z3-4.9.1/z3-4.9.1-arm64-osx-11.0.zip"
+MajorLLVMVer=16
+LLVMVer=${MajorLLVMVer}.0.0
+UbuntuArmLLVM="https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVMVer}/clang+llvm-${LLVMVer}-aarch64-linux-gnu.tar.xz"
+UbuntuLLVM="https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVMVer}/clang+llvm-${LLVMVer}-x86_64-linux-gnu-ubuntu-18.04.tar.xz"
+SourceLLVM="https://github.com/llvm/llvm-project/archive/refs/tags/llvmorg-${LLVMVer}.zip"
 UbuntuZ3="https://github.com/Z3Prover/z3/releases/download/z3-4.8.8/z3-4.8.8-x64-ubuntu-16.04.zip"
+UbuntuZ3Arm="https://github.com/SVF-tools/SVF-npm/raw/prebuilt-libs/z3-4.8.7-aarch64-ubuntu.zip"
 SourceZ3="https://github.com/Z3Prover/z3/archive/refs/tags/z3-4.8.8.zip"
 
 # Keep LLVM version suffix for version checking and better debugging
 # keep the version consistent with LLVM_DIR in setup.sh and llvm_version in Dockerfile
-LLVMHome="llvm-14.0.0.obj"
+LLVMHome="llvm-${LLVMVer}.obj"
 Z3Home="z3.obj"
 
 
@@ -123,6 +123,21 @@ function build_llvm_from_source {
     rm -r llvm-source llvm-build llvm.zip
 }
 
+function check_and_install_brew {
+    if command -v brew >/dev/null 2>&1; then
+        echo "Homebrew is already installed."
+    else
+        echo "Homebrew not found. Installing Homebrew..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        if [ $? -eq 0 ]; then
+            echo "Homebrew installation completed."
+        else
+            echo "Homebrew installation failed."
+            exit 1
+        fi
+    fi
+}
+
 # OS-specific values.
 urlLLVM=""
 urlZ3=""
@@ -133,19 +148,16 @@ OSDisplayName=""
 # M1 Macs give back arm64, some Linuxes can give aarch64 for arm architecture
 #######
 if [[ $sysOS == "Darwin" ]]; then
+    check_and_install_brew
     if [[ "$arch" == "arm64" ]]; then
-        urlZ3="$MacArmZ3"
-        urlLLVM="llvm does not have osx arm pre-built libs"
         OSDisplayName="macOS arm64"
     else
-        urlZ3="$MacZ3"
-        urlLLVM="$MacLLVM"
         OSDisplayName="macOS x86"
     fi
 elif [[ $sysOS == "Linux" ]]; then
     if [[ "$arch" == "aarch64" ]]; then
         urlLLVM="$UbuntuArmLLVM"
-        urlZ3="z3 does not have x86 arm pre-built libs"
+        urlZ3="$UbuntuZ3Arm"
         OSDisplayName="Ubuntu arm64"
     else
         urlLLVM="$UbuntuLLVM"
@@ -161,9 +173,18 @@ fi
 #######
 if [[ ! -d "$LLVM_DIR" ]]; then
     if [[ ! -d "$LLVMHome" ]]; then
-        if [[ "$sysOS" = "Darwin" && "$arch" = "arm64" ]]; then
-            # only mac arm build from source
-            build_llvm_from_source
+        if [[ "$sysOS" = "Darwin" ]]; then
+            echo "Installing LLVM binary for $OSDisplayName"
+            brew install llvm@${MajorLLVMVer}
+            # check whether llvm is installed
+            if [ $? -eq 0 ]; then
+                echo "LLVM binary installation completed."
+            else
+                echo "LLVM binary installation failed."
+                exit 1
+            fi
+            mkdir -p $SVFHOME/$LLVMHome
+            ln -s $(brew --prefix llvm@${MajorLLVMVer})/* $SVFHOME/$LLVMHome
         else
             # everything else downloads pre-built lib includ osx "arm64"
             echo "Downloading LLVM binary for $OSDisplayName"
@@ -174,9 +195,9 @@ if [[ ! -d "$LLVM_DIR" ]]; then
             rm llvm.tar.xz
         fi
     fi
-
     export LLVM_DIR="$SVFHOME/$LLVMHome"
 fi
+
 
 ########
 # Download Z3 if need be.
@@ -184,21 +205,25 @@ fi
 if [[ ! -d "$Z3_DIR" ]]; then
     if [[ ! -d "$Z3Home" ]]; then
         # M1 Macs give back arm64, some Linuxes can give aarch64.
-        if [[ "$sysOS" = "Linux" && "$arch" = "aarch64" ]]; then
-            # only linux arm build from source
-            build_z3_from_source
+        if [[ "$sysOS" = "Darwin" ]]; then
+            echo "Downloading Z3 binary for $OSDisplayName"
+            brew install z3
+            if [ $? -eq 0 ]; then
+		      echo "z3 binary installation completed."
+	        else
+		      echo "z3 binary installation failed."
+		      exit 1
+	        fi
+            mkdir -p $SVFHOME/$Z3Home
+            ln -s $(brew --prefix z3)/* $SVFHOME/$Z3Home
         else
-            # everything else downloads pre-built lib includ osx "arm64"
+            # everything else downloads pre-built lib
             echo "Downloading Z3 binary for $OSDisplayName"
             generic_download_file "$urlZ3" z3.zip
             check_unzip
             echo "Unzipping z3 package..."
             unzip -q "z3.zip" && mv ./z3-* ./$Z3Home
             rm z3.zip
-            if [[ "$sysOS" == "Darwin" ]]; then
-              # Fix missing rpath information in libz3
-              install_name_tool -id @rpath/libz3.dylib "$Z3Home/bin/libz3.dylib"
-            fi
         fi
     fi
 

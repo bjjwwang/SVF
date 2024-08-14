@@ -75,62 +75,6 @@ const Option<u32_t> Options::CxtBudget(
     10000
 );
 
-
-// DDAClient.cpp
-const Option<bool> Options::SingleLoad(
-    "single-load",
-    "Count load pointer with same source operand as one query",
-    true
-);
-
-const Option<bool> Options::DumpFree(
-    "dump-free",
-    "Dump use after free locations",
-    false
-);
-
-const Option<bool> Options::DumpUninitVar(
-    "dump-uninit-var",
-    "Dump uninitialised variables",
-    false
-);
-
-const Option<bool> Options::DumpUninitPtr(
-    "dump-uninit-ptr",
-    "Dump uninitialised pointers",
-    false
-);
-
-const Option<bool> Options::DumpSUPts(
-    "dump-su-pts",
-    "Dump strong updates store",
-    false
-);
-
-const Option<bool> Options::DumpSUStore(
-    "dump-su-store",
-    "Dump strong updates store",
-    false
-);
-
-const Option<bool> Options::MallocOnly(
-    "malloc-only",
-    "Only add tainted objects for malloc",
-    true
-);
-
-const Option<bool> Options::TaintUninitHeap(
-    "uninit-heap",
-    "detect uninitialized heap variables",
-    true
-);
-
-const Option<bool> Options::TaintUninitStack(
-    "uninit-stack",
-    "detect uninitialized stack variables",
-    true
-);
-
 // DDAPass.cpp
 const Option<u32_t> Options::MaxPathLen(
     "max-path",
@@ -254,14 +198,6 @@ const Option<bool> Options::DumpVFG(
 );
 
 
-// Location set for modeling abstract memory object (AccessPath.cpp)
-const Option<bool> Options::SingleStride(
-    "stride-only",
-    "Only use single stride in LocMemoryModel",
-    false
-);
-
-
 // Base class of pointer analyses (PointerAnalysis.cpp)
 const Option<bool> Options::TypePrint(
     "print-type",
@@ -278,6 +214,12 @@ const Option<bool> Options::FuncPointerPrint(
 const Option<bool> Options::PTSPrint(
     "print-pts",
     "Print points-to set of top-level pointers",
+    false
+);
+
+const Option<bool> Options::PrintFieldWithBasePrefix(
+    "print-field",
+    "Print field object with base object id as the prefix",
     false
 );
 
@@ -356,6 +298,12 @@ const Option<bool> Options::UsePreCompFieldSensitive(
 const Option<bool> Options::EnableAliasCheck(
     "alias-check",
     "Enable alias check functions",
+    true
+);
+
+const Option<bool> Options::EnableTypeCheck(
+    "type-check",
+    "Enable type check functions",
     true
 );
 
@@ -889,6 +837,36 @@ const Option<u32_t> Options::LoopBound(
     "loop-bound",
     "Maximum number of loop",
     1
+);
+
+const Option<u32_t> Options::WidenDelay(
+    "widen-delay", "Loop Widen Delay", 3);
+const Option<u32_t> Options::Timeout(
+    "timeout", "time out (seconds), set -1 (no timeout), default 14400s",14400);
+const Option<std::string> Options::OutputName(
+    "output","output db file","output.db");
+const Option<bool> Options::BufferOverflowCheck(
+    "overflow","Buffer Overflow Detection",false);
+const Option<bool> Options::MemoryLeakCheck(
+    "leak", "Memory Leak Detection",false);
+const Option<bool> Options::FileCheck(
+    "fileck", "File Open/Close Detection",false);
+const Option<bool> Options::DFreeCheck(
+    "dfree", "Double Free Detection",false);
+const Option<bool> Options::RaceCheck(
+    "race", "Data race Detection",false);
+const Option<bool> Options::GepUnknownIdx(
+    "gep-unknown-idx","Skip Gep Unknown Index",false);
+const Option<bool> Options::RunUncallFuncs(
+    "run-uncall-fun","Skip Gep Unknown Index",false);
+const Option<bool> Options::ICFGMergeAdjacentNodes(
+    "icfg-merge-adjnodes","ICFG Simplification - Merge Adjacent Nodes in the Same Basic Block.",false);
+
+
+const Option<u32_t> Options::AEPrecision(
+    "precision",
+    "symbolic abstraction precision for float",
+    0
 );
 
 } // namespace SVF.

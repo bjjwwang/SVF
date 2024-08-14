@@ -30,6 +30,7 @@
 #include "SVF-LLVM/SVFIRBuilder.h"
 #include "Util/SVFUtil.h"
 #include "SVF-LLVM/SymbolTableBuilder.h"
+#include "SVF-LLVM/ObjTypeInference.h"
 
 using namespace std;
 using namespace SVF;
@@ -43,11 +44,8 @@ const Type* SVFIRBuilder::getBaseTypeAndFlattenedFields(const Value* V, std::vec
 {
     assert(V);
     const Value* value = getBaseValueForExtArg(V);
-    const Type* T = value->getType();
-    while (const PointerType *ptype = SVFUtil::dyn_cast<PointerType>(T))
-        T = getPtrElementType(ptype);
-
-    u32_t numOfElems = pag->getSymbolInfo()->getNumOfFlattenElements(LLVMModuleSet::getLLVMModuleSet()->getSVFType(T));
+    const Type *objType = LLVMModuleSet::getLLVMModuleSet()->getTypeInference()->inferObjType(value);
+    u32_t numOfElems = pag->getSymbolInfo()->getNumOfFlattenElements(LLVMModuleSet::getLLVMModuleSet()->getSVFType(objType));
     /// use user-specified size for this copy operation if the size is a constaint int
     if(szValue && SVFUtil::isa<ConstantInt>(szValue))
     {
@@ -70,7 +68,7 @@ const Type* SVFIRBuilder::getBaseTypeAndFlattenedFields(const Value* V, std::vec
         ls.addOffsetVarAndGepTypePair(getPAG()->getGNode(getPAG()->getValueNode(svfOffset)), nullptr);
         fields.push_back(ls);
     }
-    return T;
+    return objType;
 }
 
 /*!
@@ -132,7 +130,7 @@ void SVFIRBuilder::handleExtCall(const CallBase* cs, const SVFFunction* svfCalle
     {
         NodeID val = pag->getValueNode(svfInst);
         NodeID obj = pag->getObjectNode(svfInst);
-        addAddrEdge(obj, val);
+        addAddrWithHeapSz(obj, val, cs);
     }
     else if (isHeapAllocExtCallViaArg(svfCall))
     {
@@ -145,7 +143,7 @@ void SVFIRBuilder::handleExtCall(const CallBase* cs, const SVFFunction* svfCalle
             NodeID obj = pag->addDummyObjNode(arg->getType());
             if (vnArg && dummy && obj)
             {
-                addAddrEdge(obj, dummy);
+                addAddrWithHeapSz(obj, dummy, cs);
                 addStoreEdge(dummy, vnArg);
             }
         }
@@ -167,7 +165,7 @@ void SVFIRBuilder::handleExtCall(const CallBase* cs, const SVFFunction* svfCalle
         else
             addComplexConsForExt(cs->getArgOperand(0), cs->getArgOperand(1), nullptr);
         if(SVFUtil::isa<PointerType>(cs->getType()))
-            addCopyEdge(getValueNode(cs->getArgOperand(0)), getValueNode(cs));
+            addCopyEdge(getValueNode(cs->getArgOperand(0)), getValueNode(cs), CopyStmt::COPYVAL);
     }
     else if(isMemsetExtFun(svfCallee))
     {
@@ -186,7 +184,7 @@ void SVFIRBuilder::handleExtCall(const CallBase* cs, const SVFFunction* svfCalle
             addStoreEdge(getValueNode(cs->getArgOperand(1)),dField);
         }
         if(SVFUtil::isa<PointerType>(cs->getType()))
-            addCopyEdge(getValueNode(cs->getArgOperand(0)), getValueNode(cs));
+            addCopyEdge(getValueNode(cs->getArgOperand(0)), getValueNode(cs), CopyStmt::COPYVAL);
     }
     else if(svfCallee->getName().compare("dlsym") == 0)
     {
@@ -223,7 +221,7 @@ void SVFIRBuilder::handleExtCall(const CallBase* cs, const SVFFunction* svfCalle
         if (const Function *fn = getHookFn(src))
         {
             NodeID srcNode = getValueNode(fn);
-            addCopyEdge(srcNode,  getValueNode(cs));
+            addCopyEdge(srcNode,  getValueNode(cs), CopyStmt::COPYVAL);
         }
     }
     else if(svfCallee->getName().find("_ZSt29_Rb_tree_insert_and_rebalancebPSt18_Rb_tree_node_baseS0_RS_") != std::string::npos)

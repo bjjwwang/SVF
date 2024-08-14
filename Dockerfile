@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:23.04
 
 # Stop ubuntu-20 interactive options.
 ENV DEBIAN_FRONTEND noninteractive
@@ -7,14 +7,14 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN set -e
 
 # Define LLVM version.
-ENV llvm_version=14.0.0
+ENV llvm_version=16.0.0
 
 # Define home directory
 ENV HOME=/home/SVF-tools
 
 # Define dependencies.
-ENV lib_deps="make g++-8 gcc-8 git zlib1g-dev libncurses5-dev build-essential libssl-dev libpcre2-dev zip vim libtinfo5"
-ENV build_deps="wget xz-utils cmake python git gdb tcl"
+ENV lib_deps="cmake g++ gcc git zlib1g-dev libncurses5-dev libtinfo5 build-essential libssl-dev libpcre2-dev zip vim libzstd-dev"
+ENV build_deps="wget xz-utils git gdb tcl python-is-python3"
 
 # Fetch dependencies.
 RUN apt-get update --fix-missing
@@ -26,7 +26,7 @@ WORKDIR ${HOME}
 RUN git clone "https://github.com/SVF-tools/SVF.git"
 WORKDIR ${HOME}/SVF
 RUN echo "Building SVF ..."
-RUN bash ./build.sh 
+RUN bash ./build.sh
 
 # Export SVF, llvm, z3 paths
 ENV PATH=${HOME}/SVF/Release-build/bin:$PATH
@@ -34,3 +34,4 @@ ENV PATH=${HOME}/SVF/llvm-$llvm_version.obj/bin:$PATH
 ENV SVF_DIR=${HOME}/SVF
 ENV LLVM_DIR=${HOME}/SVF/llvm-$llvm_version.obj
 ENV Z3_DIR=${HOME}/SVF/z3.obj
+RUN ln -s ${Z3_DIR}/bin/libz3.so ${Z3_DIR}/bin/libz3.so.4

@@ -6,16 +6,16 @@
 //
 
 // This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as published by
+// it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
 // This program is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
+// GNU General Public License for more details.
 
-// You should have received a copy of the GNU Affero General Public License
+// You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 //===-----------------------------------------------------------------------===//
@@ -26,35 +26,36 @@
  // Author: Yulei Sui,
  */
 
-#include "SVF-LLVM/LLVMUtil.h"
-#include "AbstractExecution/SVFIR2ItvExeState.h"
+#include "AE/Svfexe/SVFIR2AbsState.h"
 #include "Graphs/SVFG.h"
-#include "WPA/Andersen.h"
+#include "SVF-LLVM/LLVMUtil.h"
 #include "SVF-LLVM/SVFIRBuilder.h"
 #include "Util/CommandLine.h"
 #include "Util/Options.h"
+#include "WPA/Andersen.h"
 
+using namespace llvm;
 using namespace std;
 using namespace SVF;
 
 /*!
- * An example to query alias results of two LLVM values
+ * An example to query alias results of two SVF values
  */
-SVF::AliasResult aliasQuery(PointerAnalysis* pta, SVFValue* v1, SVFValue* v2)
+SVF::AliasResult aliasQuery(PointerAnalysis* pta, const SVFValue* v1, const SVFValue* v2)
 {
-    return pta->alias(v1,v2);
+    return pta->alias(v1, v2);
 }
 
 /*!
- * An example to print points-to set of an LLVM value
+ * An example to print points-to set of an SVF value
  */
-std::string printPts(PointerAnalysis* pta, SVFValue* val)
+std::string printPts(PointerAnalysis* pta, const SVFValue* svfval)
 {
 
     std::string str;
-    std::stringstream rawstr(str);
+    raw_string_ostream rawstr(str);
 
-    NodeID pNodeId = pta->getPAG()->getValueNode(val);
+    NodeID pNodeId = pta->getPAG()->getValueNode(svfval);
     const PointsTo& pts = pta->getPts(pNodeId);
     for (PointsTo::iterator ii = pts.begin(), ie = pts.end();
             ii != ie; ii++)
@@ -76,32 +77,33 @@ std::string printPts(PointerAnalysis* pta, SVFValue* val)
  */
 void traverseOnSVFStmt(const ICFGNode* node)
 {
-    SVFIR2ItvExeState* svfir2ExeState = new SVFIR2ItvExeState(SVFIR::getPAG());
+    AbstractState es;
+    SVFIR2AbsState* svfir2AbsState = new SVFIR2AbsState(SVFIR::getPAG());
     for (const SVFStmt* stmt: node->getSVFStmts())
     {
         if (const AddrStmt *addr = SVFUtil::dyn_cast<AddrStmt>(stmt))
         {
-            svfir2ExeState->translateAddr(addr);
+            svfir2AbsState->handleAddr(es, addr);
         }
         else if (const BinaryOPStmt *binary = SVFUtil::dyn_cast<BinaryOPStmt>(stmt))
         {
-            svfir2ExeState->translateBinary(binary);
+            svfir2AbsState->handleBinary(es, binary);
         }
         else if (const CmpStmt *cmp = SVFUtil::dyn_cast<CmpStmt>(stmt))
         {
-            svfir2ExeState->translateCmp(cmp);
+            svfir2AbsState->handleCmp(es, cmp);
         }
         else if (const LoadStmt *load = SVFUtil::dyn_cast<LoadStmt>(stmt))
         {
-            svfir2ExeState->translateLoad(load);
+            svfir2AbsState->handleLoad(es, load);
         }
         else if (const StoreStmt *store = SVFUtil::dyn_cast<StoreStmt>(stmt))
         {
-            svfir2ExeState->translateStore(store);
+            svfir2AbsState->handleStore(es, store);
         }
         else if (const CopyStmt *copy = SVFUtil::dyn_cast<CopyStmt>(stmt))
         {
-            svfir2ExeState->translateCopy(copy);
+            svfir2AbsState->handleCopy(es, copy);
         }
         else if (const GepStmt *gep = SVFUtil::dyn_cast<GepStmt>(stmt))
         {
@@ -110,24 +112,24 @@ void traverseOnSVFStmt(const ICFGNode* node)
                 gep->accumulateConstantByteOffset();
                 gep->accumulateConstantOffset();
             }
-            svfir2ExeState->translateGep(gep);
+            svfir2AbsState->handleGep(es, gep);
         }
         else if (const SelectStmt *select = SVFUtil::dyn_cast<SelectStmt>(stmt))
         {
-            svfir2ExeState->translateSelect(select);
+            svfir2AbsState->handleSelect(es, select);
         }
         else if (const PhiStmt *phi = SVFUtil::dyn_cast<PhiStmt>(stmt))
         {
-            svfir2ExeState->translatePhi(phi);
+            svfir2AbsState->handlePhi(es, phi);
         }
         else if (const CallPE *callPE = SVFUtil::dyn_cast<CallPE>(stmt))
         {
             // To handle Call Edge
-            svfir2ExeState->translateCall(callPE);
+            svfir2AbsState->handleCall(es, callPE);
         }
         else if (const RetPE *retPE = SVFUtil::dyn_cast<RetPE>(stmt))
         {
-            svfir2ExeState->translateRet(retPE);
+            svfir2AbsState->handleRet(es, retPE);
         }
         else
             assert(false && "implement this part");
@@ -162,14 +164,19 @@ void traverseOnICFG(ICFG* icfg, const ICFGNode* iNode)
     }
 }
 
+void dummyVisit(const VFGNode* node)
+{
+
+}
 /*!
  * An example to query/collect all the uses of a definition of a value along value-flow graph (VFG)
  */
-void traverseOnVFG(const SVFG* vfg, SVFValue* val)
+void traverseOnVFG(const SVFG* vfg, const SVFValue* svfval)
 {
     SVFIR* pag = SVFIR::getPAG();
-
-    PAGNode* pNode = pag->getGNode(pag->getValueNode(val));
+    PAGNode* pNode = pag->getGNode(pag->getValueNode(svfval));
+    if (!vfg->hasDefSVFGNode(pNode))
+        return;
     const VFGNode* vNode = vfg->getDefSVFGNode(pNode);
     FIFOWorkList<const VFGNode*> worklist;
     Set<const VFGNode*> visited;
@@ -195,10 +202,11 @@ void traverseOnVFG(const SVFG* vfg, SVFValue* val)
     /// Collect all LLVM Values
     for(Set<const VFGNode*>::const_iterator it = visited.begin(), eit = visited.end(); it!=eit; ++it)
     {
-        // const VFGNode* node = *it;
+        const VFGNode* node = *it;
+        dummyVisit(node);
         /// can only query VFGNode involving top-level pointers (starting with % or @ in LLVM IR)
         /// PAGNode* pNode = vfg->getLHSTopLevPtr(node);
-        /// SVFValue* val = pNode->getValue();
+        /// Value* val = pNode->getValue();
     }
 }
 
@@ -224,36 +232,49 @@ int main(int argc, char ** argv)
     /// Create Andersen's pointer analysis
     Andersen* ander = AndersenWaveDiff::createAndersenWaveDiff(pag);
 
-    /// Query aliases
-    /// aliasQuery(ander,value1,value2);
-
-    /// Print points-to information
-    /// printPts(ander, value1);
 
     /// Call Graph
     PTACallGraph* callgraph = ander->getPTACallGraph();
 
     /// ICFG
     ICFG* icfg = pag->getICFG();
-    icfg->dump("icfg");
 
     /// Value-Flow Graph (VFG)
     VFG* vfg = new VFG(callgraph);
 
     /// Sparse value-flow graph (SVFG)
-    SVFGBuilder svfBuilder(true);
-    //SVFG* svfg =
-    svfBuilder.buildFullSVFG(ander);
+    SVFGBuilder svfBuilder;
+    SVFG* svfg = svfBuilder.buildFullSVFG(ander);
 
     /// Collect uses of an LLVM Value
-    /// traverseOnVFG(svfg, value);
-
+    if (Options::PTSPrint())
+    {
+        for (const auto& it : *svfg)
+        {
+            const SVFGNode* node = it.second;
+            if (node->getValue())
+            {
+                traverseOnVFG(svfg, node->getValue());
+                /// Print points-to information
+                printPts(ander, node->getValue());
+                for (const SVFGEdge* edge : node->getOutEdges())
+                {
+                    const SVFGNode* node2 = edge->getDstNode();
+                    if (node2->getValue())
+                        aliasQuery(ander, node->getValue(), node2->getValue());
+                }
+            }
+        }
+    }
 
     /// Collect all successor nodes on ICFG
-    for (const auto &it : *icfg)
+    if (Options::PTSPrint())
     {
-        const ICFGNode* node = it.second;
-        traverseOnICFG(icfg, node);
+        for (const auto& it : *icfg)
+        {
+            const ICFGNode* node = it.second;
+            traverseOnICFG(icfg, node);
+        }
     }
 
     // clean up memory
@@ -263,7 +284,6 @@ int main(int argc, char ** argv)
 
     LLVMModuleSet::getLLVMModuleSet()->dumpModulesToFile(".svf.bc");
     SVF::LLVMModuleSet::releaseLLVMModuleSet();
-
     llvm::llvm_shutdown();
     return 0;
 }

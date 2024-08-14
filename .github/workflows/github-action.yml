@@ -12,11 +12,13 @@ env:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    env:
+      XCODE_VERSION: '15.3.0'
     strategy:
       matrix:
-        os: [ubuntu-20.04, macos-11]
+        os: [ubuntu-latest, macos-latest]
         include:
-          - os: [ubuntu-20.04]
+          - os: [ubuntu-latest]
             sanitizer: address
     steps:
       # checkout the repo
@@ -26,17 +28,19 @@ jobs:
         if: runner.os == 'macOS'
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: 12.5.1
+          xcode-version: ${{ env.XCODE_VERSION }}
       - name: mac-setup-workaround
         if: runner.os == 'macOS'
-        run: ln -sfn /Applications/Xcode_12.5.1.app /Applications/Xcode.app
+        run: |
+          ln -sfn /Applications/Xcode_${{ env.XCODE_VERSION }}.app /Applications/Xcode.app
+
       - name: ubuntu-setup
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
           sudo apt-get update
-          sudo apt-get install cmake gcc g++ nodejs doxygen graphviz lcov
+          sudo apt-get install cmake gcc g++ nodejs doxygen graphviz lcov libncurses5-dev libtinfo5 libzstd-dev
 
       # build-svf
       - name: build-svf
@@ -47,6 +51,11 @@ jobs:
           if [ "$RUNNER_OS" == "Linux" ] && [ "${{matrix.sanitizer}}" == "" ]; then export SVF_COVERAGE=1; fi
           git clone "https://github.com/SVF-tools/Test-Suite.git";
           source ${{github.workspace}}/build.sh
+
+      - name: ctest objtype inference
+        working-directory: ${{github.workspace}}/Release-build
+        run:
+          ctest -R objtype -VV
 
       - name: ctest wpa
         working-directory: ${{github.workspace}}/Release-build
@@ -83,6 +92,21 @@ jobs:
         run:
           ctest -R double_free -VV
 
+      - name: ctest ae_symabs
+        working-directory: ${{github.workspace}}/Release-build
+        run:
+          ctest -R symabs -VV
+
+      - name: ctest ae_assert
+        working-directory: ${{github.workspace}}/Release-build
+        run:
+          ctest -R ae_assert_test -VV
+
+      - name: ctest ae_overflow
+        working-directory: ${{github.workspace}}/Release-build
+        run:
+          ctest -R ae_overflow_test -VV
+
       - name: ctest cfl_tests
         working-directory: ${{github.workspace}}/Release-build
         run:
@@ -110,8 +134,6 @@ jobs:
           lcov --remove coverage.info '${{github.workspace}}/llvm-*.obj/*' --output-file coverage.info
           lcov --remove coverage.info '${{github.workspace}}/svf/include/FastCluster/*' --output-file coverage.info
           lcov --remove coverage.info '${{github.workspace}}/svf/lib/FastCluster/*' --output-file coverage.info
-          lcov --remove coverage.info '${{github.workspace}}/svf/include/AbstractExecution/*' --output-file coverage.info
-          lcov --remove coverage.info '${{github.workspace}}/svf/lib/AbstractExecution/*' --output-file coverage.info
 
       - name: upload-coverage
         if: runner.os == 'Linux'

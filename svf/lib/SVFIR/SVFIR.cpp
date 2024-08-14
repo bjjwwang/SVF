@@ -61,7 +61,7 @@ AddrStmt* SVFIR::addAddrStmt(NodeID src, NodeID dst)
 /*!
  * Add Copy edge
  */
-CopyStmt* SVFIR::addCopyStmt(NodeID src, NodeID dst)
+CopyStmt* SVFIR::addCopyStmt(NodeID src, NodeID dst, CopyStmt::CopyKind type)
 {
     SVFVar* srcNode = getGNode(src);
     SVFVar* dstNode = getGNode(dst);
@@ -69,7 +69,7 @@ CopyStmt* SVFIR::addCopyStmt(NodeID src, NodeID dst)
         return nullptr;
     else
     {
-        CopyStmt* copyPE = new CopyStmt(srcNode, dstNode);
+        CopyStmt* copyPE = new CopyStmt(srcNode, dstNode, type);
         addToStmt2TypeMap(copyPE);
         addEdge(srcNode,dstNode, copyPE);
         return copyPE;
@@ -279,7 +279,7 @@ SVFStmt* SVFIR::addBlackHoleAddrStmt(NodeID node)
     if(Options::HandBlackHole())
         return pag->addAddrStmt(pag->getBlackHoleNode(), node);
     else
-        return pag->addCopyStmt(pag->getNullPtr(), node);
+        return pag->addCopyStmt(pag->getNullPtr(), node, CopyStmt::COPYVAL);
 }
 
 /*!
@@ -385,7 +385,7 @@ GepStmt* SVFIR::addVariantGepStmt(NodeID src, NodeID dst, const AccessPath& ap)
  */
 NodeID SVFIR::addGepValNode(const SVFValue* curInst,const SVFValue* gepVal, const AccessPath& ap, NodeID i, const SVFType* type)
 {
-    NodeID base = getBaseValVar(getValueNode(gepVal));
+    NodeID base = getValueNode(gepVal);
     //assert(findPAGNode(i) == false && "this node should not be created before");
     assert(0==GepValObjMap[curInst].count(std::make_pair(base, ap))
            && "this node should not be created before");
@@ -509,29 +509,6 @@ NodeBS SVFIR::getFieldsAfterCollapse(NodeID id)
     }
     else
         return getAllFieldsObjVars(mem);
-}
-
-/*!
- * Get a base pointer given a pointer
- * Return the source node of its connected gep edge if this pointer has
- * Otherwise return the node id itself
- */
-NodeID SVFIR::getBaseValVar(NodeID nodeId)
-{
-    SVFVar* node  = getGNode(nodeId);
-    if (node->hasIncomingEdges(SVFStmt::Gep))
-    {
-        SVFStmt::SVFStmtSetTy& geps = node->getIncomingEdges(SVFStmt::Gep);
-
-        assert((geps.size()==1) && "one node can only be connected by at most one gep edge!");
-
-        SVFVar::iterator it = geps.begin();
-
-        assert(SVFUtil::isa<GepStmt>(*it) && "not a gep edge??");
-        return (*it)->getSrcID();
-    }
-    else
-        return nodeId;
 }
 
 /*!
@@ -667,31 +644,6 @@ void SVFIR::initialiseCandidatePointers()
         if (isValidPointer(nodeId) == false)
             continue;
         candidatePointers.insert(nodeId);
-    }
-}
-/*!
- * Return true if FIObjVar can point to any object
- * Or a field GepObjVar can point to any object.
- */
-bool SVFIR::isNonPointerObj(NodeID id) const
-{
-    SVFVar* node = getGNode(id);
-    if (const FIObjVar* fiNode = SVFUtil::dyn_cast<FIObjVar>(node))
-    {
-        return (fiNode->getMemObj()->hasPtrObj()==false);
-    }
-    else if (const GepObjVar* gepNode = SVFUtil::dyn_cast<GepObjVar>(node))
-    {
-        return (gepNode->getMemObj()->isNonPtrFieldObj(gepNode->getConstantFieldIdx()));
-    }
-    else if (const DummyObjVar* dummyNode = SVFUtil::dyn_cast<DummyObjVar>(node))
-    {
-        return (dummyNode->getMemObj()->hasPtrObj()==false);
-    }
-    else
-    {
-        assert(false && "expecting a object node");
-        abort();
     }
 }
 /*

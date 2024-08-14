@@ -80,17 +80,6 @@ public:
     // ContextDDA.cpp
     static const Option<u32_t> CxtBudget;
 
-    // DDAClient.cpp
-    static const Option<bool> SingleLoad;
-    static const Option<bool> DumpFree;
-    static const Option<bool> DumpUninitVar;
-    static const Option<bool> DumpUninitPtr;
-    static const Option<bool> DumpSUPts;
-    static const Option<bool> DumpSUStore;
-    static const Option<bool> MallocOnly;
-    static const Option<bool> TaintUninitHeap;
-    static const Option<bool> TaintUninitStack;
-
     // DDAPass.cpp
     static const Option<u32_t> MaxPathLen;
     static const Option<u32_t> MaxContextLen;
@@ -121,14 +110,12 @@ public:
     // Sparse value-flow graph (VFG.cpp)
     static const Option<bool> DumpVFG;
 
-    // Location set for modeling abstract memory object (AccessPath.cpp)
-    static const Option<bool> SingleStride;
-
     // Base class of pointer analyses (PointerAnalysis.cpp)
     static const Option<bool> TypePrint;
     static const Option<bool> FuncPointerPrint;
     static const Option<bool> PTSPrint;
     static const Option<bool> PTSAllPrint;
+    static const Option<bool> PrintFieldWithBasePrefix;
     static const Option<bool> PStat;
     static const Option<u32_t> StatBudget;
     static const Option<bool> PAGDotGraph;
@@ -141,6 +128,7 @@ public:
     static const Option<u32_t> IndirectCallLimit;
     static const Option<bool> UsePreCompFieldSensitive;
     static const Option<bool> EnableAliasCheck;
+    static const Option<bool> EnableTypeCheck;
     static const Option<bool> EnableThreadCallGraph;
     static const Option<bool> ConnectVCallOnCHA;
 
@@ -272,6 +260,31 @@ public:
     // Loop Analysis
     static const Option<bool> LoopAnalysis;
     static const Option<u32_t> LoopBound;
+
+    // Abstract Execution
+    static const Option<u32_t> WidenDelay;
+    /// the max time consumptions (seconds). Default: 4 hours 14400s
+    static const Option<u32_t> Timeout;
+    /// bug info output file, Default: output.db
+    static const Option<std::string> OutputName;
+    /// buffer overflow checker, Default: false
+    static const Option<bool> BufferOverflowCheck;
+    /// memory leak check, Default: false
+    static const Option<bool> MemoryLeakCheck;
+    /// file open close checker, Default: false
+    static const Option<bool> FileCheck;
+    /// double free checker, Default: false
+    static const Option<bool> DFreeCheck;
+    /// data race checker, Default: false
+    static const Option<bool> RaceCheck;
+    /// if the access index of gepstmt is unknown, skip it, Default: false
+    static const Option<bool> GepUnknownIdx;
+    static const Option<bool> RunUncallFuncs;
+
+    static const Option<bool> ICFGMergeAdjacentNodes;
+
+    // float precision for symbolic abstraction
+    static const Option<u32_t> AEPrecision;
 };
 }  // namespace SVF
 
