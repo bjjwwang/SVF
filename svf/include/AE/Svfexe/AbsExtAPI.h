@@ -54,7 +54,7 @@ public:
      * @brief Constructor for AbsExtAPI.
      * @param abstractTrace Reference to a map of ICFG nodes to abstract states.
      */
-    AbsExtAPI(Map<const ICFGNode*, AbstractState>& abstractTrace);
+    AbsExtAPI(Map<const ICFGNode*, AbstractState>& traces);
 
     /**
      * @brief Initializes the external function map.
