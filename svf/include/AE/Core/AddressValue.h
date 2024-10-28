@@ -46,6 +46,7 @@ public:
     typedef Set<u32_t> AddrSet;
 private:
     AddrSet _addrs;
+    bool allocated = false;
 public:
     /// Default constructor
     AddressValue() {}
@@ -59,10 +60,10 @@ public:
     ~AddressValue() = default;
 
     /// Copy constructor
-    AddressValue(const AddressValue &other) : _addrs(other._addrs) {}
+    AddressValue(const AddressValue &other) : _addrs(other._addrs), allocated(other.allocated) {}
 
     /// Move constructor
-    AddressValue(AddressValue &&other) noexcept: _addrs(std::move(other._addrs)) {}
+    AddressValue(AddressValue &&other) noexcept: _addrs(std::move(other._addrs)), allocated(other.allocated) {}
 
     /// Copy operator=
     AddressValue &operator=(const AddressValue &other)
@@ -70,6 +71,7 @@ public:
         if (!this->equals(other))
         {
             _addrs = other._addrs;
+            allocated = other.allocated;
         }
         return *this;
     }
@@ -80,6 +82,7 @@ public:
         if (this != &other)
         {
             _addrs = std::move(other._addrs);
+            allocated = other.allocated;
         }
         return *this;
     }
@@ -127,7 +130,8 @@ public:
     /// Current AddressValue joins with another AddressValue
     bool join_with(const AddressValue &other)
     {
-        bool changed = false;
+        bool changed = (allocated != other.allocated);
+        allocated = other.allocated;
         for (const auto &addr: other)
         {
             if (!_addrs.count(addr))
@@ -151,6 +155,7 @@ public:
             }
         }
         bool changed = (_addrs != s);
+        allocated = other.allocated & allocated;    // true if both are true
         _addrs = std::move(s);
         return changed;
     }
@@ -186,6 +191,21 @@ public:
     inline void setBottom()
     {
         _addrs.clear();
+    }
+
+    inline bool isAllocated()
+    {
+        return allocated;
+    }
+
+    inline void allocate()
+    {
+        allocated = true;
+    }
+
+    inline void deallocate()
+    {
+        allocated = false;
     }
 
     const std::string toString() const

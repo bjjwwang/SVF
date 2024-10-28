@@ -523,6 +523,26 @@ void NullPtrDerefDetector::detect(AbstractState& as, const ICFGNode* node) {
     }
 }
 
+
+/**
+ * @brief Check if an Abstract Value is NULL (or uninitialized).
+ *
+ * @param v An Abstract Value of loaded from an address in an Abstract State.
+ */
+bool NullPtrDerefDetector::isNull(AbstractValue v) {
+    if (v.getAddrs().isAllocated())
+        return false;
+
+    if ((v.getInterval().isBottom() && v.getAddrs().isBottom()))
+        return true;
+
+    if (v.getAddrs().contains(BlackHoleAddr))
+        return true;
+
+    return false;
+}
+
+
 /**
  * @brief Checks if pointer can be safely dereferenced.
  * @param as Reference to the abstract state.
@@ -533,8 +553,9 @@ bool NullPtrDerefDetector::canSafelyDerefPtr(AbstractState& as, const SVF::SVFVa
     NodeID value_id = value->getId();
     if (isUninit(as[value_id])) return false;
     if (!as[value_id].isAddr()) return true;    // Loading an Interval Value
-    AbstractValue &addrs = as[value_id];
-    for (const auto &addr: addrs.getAddrs()) {
+    AddressValue &addrs = as[value_id].getAddrs();
+    if (addrs.isAllocated()) return true;
+    for (const auto &addr: addrs) {
         if (isNull(as.load(addr)))
             return false;
     }

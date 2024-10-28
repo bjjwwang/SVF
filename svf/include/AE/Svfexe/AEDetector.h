@@ -372,11 +372,7 @@ public:
      *
      * @param v An Abstract Value of loaded from an address in an Abstract State.
      */
-    bool isNull(AbstractValue v) {
-        bool is = (v.getInterval().isBottom() && v.getAddrs().isBottom()) ||
-            v.getAddrs().contains(BlackHoleAddr);
-        return is;
-    }
+    static bool isNull(AbstractValue v);
 
     /**
      * @brief Check if an Abstract Value is uninitialized.

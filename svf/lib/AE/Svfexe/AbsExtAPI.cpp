@@ -38,7 +38,7 @@ AbsExtAPI::AbsExtAPI(Map<const ICFGNode*, AbstractState>& traces): abstractTrace
 void AbsExtAPI::initExtFunMap()
 {
 #define SSE_FUNC_PROCESS(LLVM_NAME ,FUNC_NAME) \
-        auto sse_##FUNC_NAME = [this](const CallICFGNode *callNode) { \
+        auto sse_## FUNC_NAME = [this](const CallICFGNode *callNode) { \
         /* run real ext function */            \
         AbstractState& as = getAbsStateFromTrace(callNode); \
         u32_t rhs_id = callNode->getArgument(0)->getId(); \
@@ -49,7 +49,7 @@ void AbsExtAPI::initExtFunMap()
         as[lhsId] = IntervalValue(res);           \
         return; \
     };                                                                         \
-    func_map[#FUNC_NAME] = sse_##FUNC_NAME;
+    func_map[#FUNC_NAME] = sse_## FUNC_NAME;
 
     SSE_FUNC_PROCESS(isalnum, isalnum);
     SSE_FUNC_PROCESS(isalpha, isalpha);
@@ -339,6 +339,21 @@ void AbsExtAPI::initExtFunMap()
     };
     func_map["recv"] = sse_recv;
     func_map["__recv"] = sse_recv;
+
+    auto sse_alloc = [&](const CallICFGNode *callNode)
+    {
+        // recv(sockfd, buf, len, flags);
+        if (callNode->arg_size() < 1) return;
+        AbstractState &as = getAbsStateFromTrace(callNode);
+        u32_t lhsId = callNode->getRetICFGNode()->getActualRet()->getId();
+        as[lhsId].getAddrs().allocate();
+        // for (AddressValue addr : as[lhsId].getAddrs()) {
+        //     if (addr != BlackHoleAddr)
+        //         as.store(addr, AbstractValue());  // void *ptr = malloc -> *ptr = ⊥
+        // }
+    };
+    func_map["malloc"] = sse_alloc;
+
 };
 
 AbstractState& AbsExtAPI::getAbsStateFromTrace(const SVF::ICFGNode* node)
