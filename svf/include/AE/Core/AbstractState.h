@@ -64,6 +64,8 @@ public:
 
     typedef VarToAbsValMap AddrToAbsValMap;
 
+    typedef Map<u32_t, Set<u32_t>> AliasMap;
+
 public:
     /// default constructor
     AbstractState()
@@ -73,7 +75,7 @@ public:
     AbstractState(VarToAbsValMap&_varToValMap, AddrToAbsValMap&_locToValMap) : _varToAbsVal(_varToValMap), _addrToAbsVal(_locToValMap) {}
 
     /// copy constructor
-    AbstractState(const AbstractState&rhs) : _varToAbsVal(rhs.getVarToVal()), _addrToAbsVal(rhs.getLocToVal())
+    AbstractState(const AbstractState&rhs) : _varToAbsVal(rhs.getVarToVal()), _addrToAbsVal(rhs.getLocToVal()), _aliasMap(rhs._aliasMap)
     {
 
     }
@@ -97,6 +99,7 @@ public:
 
     u32_t getAllocaInstByteSize(const AddrStmt *addr);
 
+    void deallocate(u32_t ptr);
 
     /// The physical address starts with 0x7f...... + idx
     static inline u32_t getVirtualMemAddress(u32_t idx)
@@ -127,13 +130,14 @@ public:
         {
             _varToAbsVal = rhs._varToAbsVal;
             _addrToAbsVal = rhs._addrToAbsVal;
+            _aliasMap = rhs._aliasMap;
         }
         return *this;
     }
 
     /// move constructor
     AbstractState(AbstractState&&rhs) : _varToAbsVal(std::move(rhs._varToAbsVal)),
-        _addrToAbsVal(std::move(rhs._addrToAbsVal))
+        _addrToAbsVal(std::move(rhs._addrToAbsVal)), _aliasMap(std::move(rhs._aliasMap))
     {
 
     }
@@ -145,6 +149,7 @@ public:
         {
             _varToAbsVal = std::move(rhs._varToAbsVal);
             _addrToAbsVal = std::move(rhs._addrToAbsVal);
+            _aliasMap = std::move(rhs._aliasMap);
         }
         return *this;
     }
@@ -188,6 +193,8 @@ protected:
     VarToAbsValMap _varToAbsVal; ///< Map a variable (symbol) to its abstract value
     AddrToAbsValMap
     _addrToAbsVal; ///< Map a memory address to its stored abstract value
+
+    AliasMap _aliasMap; ///< Map a variable to its alias
 
 public:
 
@@ -267,6 +274,13 @@ public:
     {
         return _addrToAbsVal;
     }
+
+    /**
+     * Assignment: dst = src
+     * @param dst usually LHS (in assignment).
+     * @param src usually RHS (in assignment).
+     */
+    void addAlias(u32_t dst, u32_t src);
 
 public:
 
@@ -396,6 +410,7 @@ public:
     {
         _addrToAbsVal.clear();
         _varToAbsVal.clear();
+        _aliasMap.clear();
     }
 
 };

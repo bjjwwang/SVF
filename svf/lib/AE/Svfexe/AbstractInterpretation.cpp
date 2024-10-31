@@ -1348,6 +1348,7 @@ void AbstractInterpretation::updateStateOnLoad(const LoadStmt *load)
     u32_t rhs = load->getRHSVarID();
     u32_t lhs = load->getLHSVarID();
     as[lhs] = as.loadValue(rhs);
+    as.addAlias(lhs, rhs);
 }
 
 void AbstractInterpretation::updateStateOnStore(const StoreStmt *store)
@@ -1356,6 +1357,7 @@ void AbstractInterpretation::updateStateOnStore(const StoreStmt *store)
     u32_t rhs = store->getRHSVarID();
     u32_t lhs = store->getLHSVarID();
     as.storeValue(lhs, as[rhs]);
+    as.addAlias(lhs, rhs);
 }
 
 void AbstractInterpretation::updateStateOnCopy(const CopyStmt *copy)
