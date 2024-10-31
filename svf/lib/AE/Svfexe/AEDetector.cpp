@@ -551,10 +551,17 @@ bool NullPtrDerefDetector::isNull(AbstractValue v) {
  */
 bool NullPtrDerefDetector::canSafelyDerefPtr(AbstractState& as, const SVF::SVFVar* value) {
     NodeID value_id = value->getId();
-    if (isUninit(as[value_id])) return false;
-    if (!as[value_id].isAddr()) return true;    // Loading an Interval Value
+    if (isUninit(as[value_id]))
+        return false;
+    if (!as[value_id].isAddr())
+        return true;    // Loading an Interval Value
+
     AddressValue &addrs = as[value_id].getAddrs();
-    if (addrs.isAllocated()) return true;
+    if (addrs.isAllocated())
+        return true;
+    if (addrs.isDangling())
+        return false;
+
     for (const auto &addr: addrs) {
         if (isNull(as.load(addr)))
             return false;
