@@ -44,9 +44,16 @@ class AddressValue
 {
 public:
     typedef Set<u32_t> AddrSet;
+
+    enum STATE
+    {
+        UNALLOCATED,
+        ALLOCATED,
+        FREE
+    };
 private:
     AddrSet _addrs;
-    bool allocated = false;
+    STATE _state = UNALLOCATED;
 public:
     /// Default constructor
     AddressValue() {}
@@ -60,10 +67,10 @@ public:
     ~AddressValue() = default;
 
     /// Copy constructor
-    AddressValue(const AddressValue &other) : _addrs(other._addrs), allocated(other.allocated) {}
+    AddressValue(const AddressValue &other) : _addrs(other._addrs), _state(other._state) {}
 
     /// Move constructor
-    AddressValue(AddressValue &&other) noexcept: _addrs(std::move(other._addrs)), allocated(other.allocated) {}
+    AddressValue(AddressValue &&other) noexcept: _addrs(std::move(other._addrs)), _state(other._state) {}
 
     /// Copy operator=
     AddressValue &operator=(const AddressValue &other)
@@ -71,7 +78,7 @@ public:
         if (!this->equals(other))
         {
             _addrs = other._addrs;
-            allocated = other.allocated;
+            _state = other._state;
         }
         return *this;
     }
@@ -82,7 +89,7 @@ public:
         if (this != &other)
         {
             _addrs = std::move(other._addrs);
-            allocated = other.allocated;
+            _state = other._state;
         }
         return *this;
     }
@@ -130,8 +137,8 @@ public:
     /// Current AddressValue joins with another AddressValue
     bool join_with(const AddressValue &other)
     {
-        bool changed = (allocated != other.allocated);
-        allocated = other.allocated;
+        bool changed = (_state != other._state);
+        _state = other._state;
         for (const auto &addr: other)
         {
             if (!_addrs.count(addr))
@@ -155,7 +162,7 @@ public:
             }
         }
         bool changed = (_addrs != s);
-        allocated = other.allocated & allocated;    // true if both are true
+        _state = meet_state(other._state);
         _addrs = std::move(s);
         return changed;
     }
@@ -193,19 +200,42 @@ public:
         _addrs.clear();
     }
 
-    inline bool isAllocated()
+    inline bool isAllocated() const
     {
-        return allocated;
+        return _state == STATE::ALLOCATED;
+    }
+
+    inline bool isDangling() const
+    {
+        return _state == STATE::FREE;
     }
 
     inline void allocate()
     {
-        allocated = true;
+        _state = STATE::ALLOCATED;
     }
 
     inline void deallocate()
     {
-        allocated = false;
+        _state = STATE::FREE;
+    }
+
+    inline STATE meet_state(const STATE other_state) const
+    {
+        if (_state == other_state)
+            return _state;
+        else if (_state == STATE::FREE || other_state == STATE::FREE)
+            return STATE::FREE;
+        else if (_state == STATE::ALLOCATED || other_state == STATE::ALLOCATED)
+            return STATE::ALLOCATED;
+        else
+            return STATE::UNALLOCATED;
+    }
+
+    // To reset a dangling pointer by assignment.
+    inline void assign()
+    {
+        _state = STATE::UNALLOCATED;
     }
 
     const std::string toString() const
@@ -221,7 +251,7 @@ public:
             rawStr << "[";
             for (auto it = _addrs.begin(), eit = _addrs.end(); it!= eit; ++it)
             {
-                rawStr << *it << ", ";
+                rawStr << std::hex << *it << ", ";
             }
             rawStr << "]";
         }
