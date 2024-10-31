@@ -342,18 +342,21 @@ void AbsExtAPI::initExtFunMap()
 
     auto sse_alloc = [&](const CallICFGNode *callNode)
     {
-        // recv(sockfd, buf, len, flags);
         if (callNode->arg_size() < 1) return;
-        AbstractState &as = getAbsStateFromTrace(callNode);
-        u32_t lhsId = callNode->getRetICFGNode()->getActualRet()->getId();
+        AbstractState& as = getAbsStateFromTrace(callNode);
+        const u32_t lhsId = callNode->getRetICFGNode()->getActualRet()->getId();
         as[lhsId].getAddrs().allocate();
-        // for (AddressValue addr : as[lhsId].getAddrs()) {
-        //     if (addr != BlackHoleAddr)
-        //         as.store(addr, AbstractValue());  // void *ptr = malloc -> *ptr = ⊥
-        // }
     };
     func_map["malloc"] = sse_alloc;
 
+    auto sse_free = [&](const CallICFGNode *callNode)
+    {
+        if (callNode->arg_size() < 1) return;
+        AbstractState& as = getAbsStateFromTrace(callNode);
+        const u32_t freePtr = callNode->getArgument(0)->getId();
+        as.deallocate(freePtr);
+    };
+    func_map["free"] = sse_free;
 };
 
 AbstractState& AbsExtAPI::getAbsStateFromTrace(const SVF::ICFGNode* node)
