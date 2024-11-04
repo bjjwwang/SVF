@@ -43,12 +43,12 @@ u32_t AbstractState::hash() const
 {
     size_t h = getVarToVal().size() * 2;
     Hash<u32_t> hf;
-    for (const auto &t: getVarToVal())
+    for (const auto& t : getVarToVal())
     {
         h ^= hf(t.first) + 0x9e3779b9 + (h << 6) + (h >> 2);
     }
     size_t h2 = getLocToVal().size() * 2;
-    for (const auto &t: getLocToVal())
+    for (const auto& t : getLocToVal())
     {
         h2 ^= hf(t.first) + 0x9e3779b9 + (h2 << 6) + (h2 >> 2);
     }
@@ -127,6 +127,19 @@ void AbstractState::joinWith(const AbstractState& other)
             _addrToAbsVal.emplace(key, it->second);
         }
     }
+    for (auto it = other._aliasMap.begin(); it != other._aliasMap.end(); ++it)
+    {
+        auto key = it->first;
+        auto oit = _aliasMap.find(key);
+        if (oit != _aliasMap.end())
+        {
+            oit->second.insert(it->second.begin(), it->second.end());
+        }
+        else
+        {
+            _aliasMap.emplace(key, it->second);
+        }
+    }
 }
 
 /// domain meet with other, important! other widen this.
@@ -148,6 +161,20 @@ void AbstractState::meetWith(const AbstractState& other)
         if (oit != _addrToAbsVal.end())
         {
             oit->second.meet_with(it->second);
+        }
+    }
+    for (auto it = other._aliasMap.begin(); it != other._aliasMap.end(); ++it)
+    {
+        auto key = it->first;
+        auto oit = _aliasMap.find(key);
+        if (oit != _aliasMap.end())
+        {
+            Set<u32_t> resultSet;
+            std::set_intersection(oit->second.begin(), oit->second.end(),
+                                  it->second.begin(), it->second.end(),
+                                  std::inserter(resultSet, resultSet.begin()));
+
+            oit->second = resultSet;
         }
     }
 }
@@ -382,10 +409,17 @@ AbstractValue AbstractState::loadValue(NodeID varId)
 // storeValue
 void AbstractState::storeValue(NodeID varId, AbstractValue val)
 {
-    for (auto addr : (*this)[varId].getAddrs())
+    AddressValue &addrValue = (*this)[varId].getAddrs();
+    for (auto addr : addrValue)
     {
         store(addr, val); // *p = q
     }
+    if (val.getAddrs().isAllocated())
+        addrValue.allocate();
+    else if (val.getAddrs().isDangling())
+        addrValue.deallocate();
+    else if (addrValue.isDangling())
+        addrValue.assign();
 }
 
 void AbstractState::printAbstractState() const
@@ -414,11 +448,17 @@ void AbstractState::printAbstractState() const
                 ++i;
                 if (i < item.second.getAddrs().size())
                 {
-                    SVFUtil::outs() << "0x" << std::hex << addr << ", ";
+                    if (addr == BlackHoleAddr)
+                        SVFUtil::outs() << "NULL, ";
+                    else
+                        SVFUtil::outs() << "0x" << std::hex << addr << ", ";
                 }
                 else
                 {
-                    SVFUtil::outs() << "0x" << std::hex << addr;
+                    if (addr == BlackHoleAddr)
+                        SVFUtil::outs() << "NULL, ";
+                    else
+                        SVFUtil::outs() << "0x" << std::hex << addr;
                 }
             }
             SVFUtil::outs() << "}\n";
@@ -524,4 +564,26 @@ u32_t AbstractState::getAllocaInstByteSize(const AddrStmt *addr)
     }
     assert (false && "Addr rhs value is not ObjVar");
     abort();
+}
+
+void AbstractState::addAlias(u32_t dst, u32_t src)
+{
+    _aliasMap[dst].insert(src);
+}
+
+void AbstractState::deallocate(u32_t ptr)
+{
+    AbstractState &as = *this;
+    for (u32_t als : _aliasMap[ptr])
+    {
+        as[als].getAddrs().deallocate();
+    }
+
+    AddressValue addrs = as[ptr].getAddrs();
+
+    for (auto & it : as._addrToAbsVal)
+        for (u32_t addrOther : it.second.addrs)
+            if (addrs.contains(addrOther))
+                it.second.addrs.deallocate();
+
 }
