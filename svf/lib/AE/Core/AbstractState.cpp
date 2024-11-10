@@ -127,6 +127,8 @@ void AbstractState::joinWith(const AbstractState& other)
             _addrToAbsVal.emplace(key, it->second);
         }
     }
+    _allocAddrs.insert(other._allocAddrs.begin(), other._allocAddrs.end());
+    _freeAddrs.insert(other._freeAddrs.begin(), other._freeAddrs.end());
 }
 
 /// domain meet with other, important! other widen this.
@@ -491,7 +493,7 @@ const SVFType* AbstractState::getPointeeElement(NodeID id)
     return nullptr;
 }
 
-u32_t AbstractState::getAllocaInstByteSize(const AddrStmt *addr)
+u32_t AbstractState::getAllocaInstByteSize(const AddrStmt* addr)
 {
     SVFIR* svfir = PAG::getPAG();
     if (const ObjVar* objvar = SVFUtil::dyn_cast<ObjVar>(addr->getRHSVar()))
@@ -509,19 +511,47 @@ u32_t AbstractState::getAllocaInstByteSize(const AddrStmt *addr)
             // Default element size is set to 1.
             u32_t elementSize = 1;
             u64_t res = elementSize;
-            for (const SVFValue* value: sizes)
+            for (const SVFValue* value : sizes)
             {
                 if (!inVarToValTable(svfir->getValueNode(value)))
                 {
-                    (*this)[svfir->getValueNode(value)] = IntervalValue(Options::MaxFieldLimit());
+                    (*this)[svfir->getValueNode(value)] =
+                        IntervalValue(Options::MaxFieldLimit());
                 }
                 IntervalValue itv =
                     (*this)[svfir->getValueNode(value)].getInterval();
-                res = res * itv.ub().getIntNumeral() > Options::MaxFieldLimit()? Options::MaxFieldLimit(): res * itv.ub().getIntNumeral();
+                res = res * itv.ub().getIntNumeral() > Options::MaxFieldLimit()
+                          ? Options::MaxFieldLimit()
+                          : res * itv.ub().getIntNumeral();
             }
             return (u32_t)res;
         }
     }
-    assert (false && "Addr rhs value is not ObjVar");
+    assert(false && "Addr rhs value is not ObjVar");
     abort();
+}
+void AbstractState::allocate(NodeID ptr)
+{
+    AbstractState as = *this;
+    for (const u32_t addr : as[ptr].getAddrs())
+    {
+        if (_freeAddrs.find(addr) != _freeAddrs.end())
+        {
+            _freeAddrs.erase(addr);
+        }
+        _allocAddrs.insert(addr);
+    }
+}
+
+
+void AbstractState::free(NodeID ptr){
+    AbstractState as = *this;
+    for (const u32_t addr : as[ptr].getAddrs())
+    {
+        if (_allocAddrs.find(addr) != _allocAddrs.end())
+        {
+            _allocAddrs.erase(addr);
+            _freeAddrs.insert(addr);
+        }
+    }
 }

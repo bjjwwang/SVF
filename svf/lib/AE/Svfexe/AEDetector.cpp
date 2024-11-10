@@ -535,6 +535,11 @@ bool NullPtrDerefDetector::canSafelyDerefPtr(AbstractState& as, const SVF::SVFVa
     if (!as[value_id].isAddr()) return true;    // Loading an Interval Value
     AbstractValue &addrs = as[value_id];
     for (const auto &addr: addrs.getAddrs()) {
+        if (as.isFree(addr))
+            // Dangling Pointer
+            return false;
+        if (as.isAllocated(addr))
+            continue;
         if (isNull(as.load(addr)))
             return false;
     }
@@ -582,6 +587,7 @@ void NullPtrDerefDetector::handleStubFunctions(const SVF::CallICFGNode* callNode
         if (callNode->arg_size() < 1) return;
         AbstractState&as = AbstractInterpretation::getAEInstance().getAbsStateFromTrace(callNode);
         const SVFVar* arg0Val = callNode->getArgument(0);
+        as.printAbstractState();
         bool isSafe = canSafelyDerefPtr(as, arg0Val);
         if (isSafe) {
             std::cout << "safe load pointer success: " << callNode->toString() << std::endl;

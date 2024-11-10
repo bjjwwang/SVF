@@ -70,10 +70,13 @@ public:
     {
     }
 
-    AbstractState(VarToAbsValMap&_varToValMap, AddrToAbsValMap&_locToValMap) : _varToAbsVal(_varToValMap), _addrToAbsVal(_locToValMap) {}
+    AbstractState(VarToAbsValMap&_varToValMap, AddrToAbsValMap&_locToValMap) : _varToAbsVal(_varToValMap), _addrToAbsVal(_locToValMap),
+        _allocAddrs(), _freeAddrs()
+    {}
 
     /// copy constructor
-    AbstractState(const AbstractState&rhs) : _varToAbsVal(rhs.getVarToVal()), _addrToAbsVal(rhs.getLocToVal())
+    AbstractState(const AbstractState&rhs) : _varToAbsVal(rhs.getVarToVal()), _addrToAbsVal(rhs.getLocToVal()),
+        _allocAddrs(rhs._allocAddrs), _freeAddrs(rhs._freeAddrs)
     {
 
     }
@@ -97,6 +100,19 @@ public:
 
     u32_t getAllocaInstByteSize(const AddrStmt *addr);
 
+    void allocate(NodeID ptr);
+
+    void free(NodeID ptr);
+
+    inline bool isAllocated(u32_t addr)
+    {
+        return _allocAddrs.find(addr) != _allocAddrs.end();
+    }
+
+    inline bool isFree(u32_t addr)
+    {
+        return _freeAddrs.find(addr) != _freeAddrs.end();
+    }
 
     /// The physical address starts with 0x7f...... + idx
     static inline u32_t getVirtualMemAddress(u32_t idx)
@@ -127,13 +143,16 @@ public:
         {
             _varToAbsVal = rhs._varToAbsVal;
             _addrToAbsVal = rhs._addrToAbsVal;
+            _allocAddrs = rhs._allocAddrs;
+            _freeAddrs = rhs._freeAddrs;
         }
         return *this;
     }
 
     /// move constructor
     AbstractState(AbstractState&&rhs) : _varToAbsVal(std::move(rhs._varToAbsVal)),
-        _addrToAbsVal(std::move(rhs._addrToAbsVal))
+        _addrToAbsVal(std::move(rhs._addrToAbsVal)), _allocAddrs(std::move(rhs._allocAddrs)),
+        _freeAddrs(std::move(rhs._freeAddrs))
     {
 
     }
@@ -145,6 +164,8 @@ public:
         {
             _varToAbsVal = std::move(rhs._varToAbsVal);
             _addrToAbsVal = std::move(rhs._addrToAbsVal);
+            _allocAddrs = std::move(rhs._allocAddrs);
+            _freeAddrs = std::move(rhs._freeAddrs);
         }
         return *this;
     }
@@ -188,6 +209,10 @@ protected:
     VarToAbsValMap _varToAbsVal; ///< Map a variable (symbol) to its abstract value
     AddrToAbsValMap
     _addrToAbsVal; ///< Map a memory address to its stored abstract value
+
+protected:
+    Set<u32_t> _allocAddrs;
+    Set<u32_t> _freeAddrs;
 
 public:
 
