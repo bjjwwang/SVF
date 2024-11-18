@@ -379,6 +379,26 @@ public:
     }
 
     /**
+     * @brief Check if an Abstract Value is NULL (or uninitialized).
+     *
+     * @param v An Abstract Value of loaded from an address in an Abstract State.
+     */
+    bool isDangling(AbstractValue v) {
+        bool is = v.getAddrs().contains(FreeAddr);
+        return is;
+    }
+
+    /**
+     * @brief Check if an Abstract Value is NULL (or uninitialized).
+     *
+     * @param v An Abstract Value of loaded from an address in an Abstract State.
+     */
+    bool isAllocated(AbstractValue v) {
+        bool is = v.getAddrs().contains(AllocAddr);
+        return is;
+    }
+
+    /**
      * @brief Check if an Abstract Value is uninitialized.
      *
      * @param v An Abstract Value in an Abstract State.

@@ -312,6 +312,21 @@ public:
 
     }
 
+    inline void allocate(NodeID id)
+    {
+        for (auto addr : (*this)[id].getAddrs())
+        {
+            store(addr, AddressValue(AllocAddr));
+        }
+    }
+
+    inline void free(NodeID id)
+    {
+        for (auto addr : (*this)[id].getAddrs())
+        {
+            store(addr, AddressValue(FreeAddr));
+        }
+    }
 
     void printAbstractState() const;
 

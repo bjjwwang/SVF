@@ -339,6 +339,25 @@ void AbsExtAPI::initExtFunMap()
     };
     func_map["recv"] = sse_recv;
     func_map["__recv"] = sse_recv;
+
+    auto sse_alloc = [&](const CallICFGNode *callNode)
+    {
+        if (callNode->arg_size() < 1) return;
+        AbstractState& as = getAbsStateFromTrace(callNode);
+        const NodeID lhsId = callNode->getRetICFGNode()->getActualRet()->getId();
+        as.allocate(lhsId);
+    };
+
+    func_map["malloc"] = sse_alloc;
+    
+    auto sse_free = [&](const CallICFGNode *callNode)
+    {
+        if (callNode->arg_size() < 1) return;
+        AbstractState& as = getAbsStateFromTrace(callNode);
+        const u32_t freePtr = callNode->getArgument(0)->getId();
+        as.free(freePtr);
+    };
+    func_map["free"] = sse_free;
 };
 
 AbstractState& AbsExtAPI::getAbsStateFromTrace(const SVF::ICFGNode* node)
