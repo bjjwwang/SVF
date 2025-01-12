@@ -424,6 +424,11 @@ public:
         return symId;
     }
 
+    ObjTypeInfo* getObjTypeInfo() const
+    {
+        return typeInfo;
+    }
+
     /// Get obj type
     const SVFType* getType() const;
 

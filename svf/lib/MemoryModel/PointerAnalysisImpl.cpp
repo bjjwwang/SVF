@@ -359,13 +359,13 @@ void BVDataPTAImpl::readGepObjVarMapFromFile(std::ifstream& F)
         if (iter == gepObjVarMap.end())
         {
             SVFVar* node = pag->getGNode(base);
-            const MemObj* obj = nullptr;
+            const BaseObjVar* obj = nullptr;
             if (GepObjVar* gepObjVar = SVFUtil::dyn_cast<GepObjVar>(node))
-                obj = gepObjVar->getMemObj();
+                obj = gepObjVar->getBaseMemObj();
             else if (BaseObjVar* baseNode = SVFUtil::dyn_cast<BaseObjVar>(node))
-                obj = baseNode->getMemObj();
+                obj = baseNode->getBaseMemObj();
             else if (DummyObjVar* baseNode = SVFUtil::dyn_cast<DummyObjVar>(node))
-                obj = baseNode->getMemObj();
+                obj = baseNode->getBaseMemObj();
             else
                 assert(false && "new gep obj node kind?");
             pag->addGepObjNode(obj, offset, id);

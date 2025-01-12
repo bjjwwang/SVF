@@ -402,11 +402,11 @@ NodeID SVFIR::getGepObjVar(NodeID id, const APOffset& apOffset)
 {
     SVFVar* node = pag->getGNode(id);
     if (GepObjVar* gepNode = SVFUtil::dyn_cast<GepObjVar>(node))
-        return getGepObjVar(gepNode->getMemObj(), gepNode->getConstantFieldIdx() + apOffset);
+        return getGepObjVar(gepNode->getBaseMemObj(), gepNode->getConstantFieldIdx() + apOffset);
     else if (BaseObjVar* baseNode = SVFUtil::dyn_cast<BaseObjVar>(node))
-        return getGepObjVar(baseNode->getMemObj(), apOffset);
+        return getGepObjVar(baseNode->getBaseMemObj(), apOffset);
     else if (DummyObjVar* baseNode = SVFUtil::dyn_cast<DummyObjVar>(node))
-        return getGepObjVar(baseNode->getMemObj(), apOffset);
+        return getGepObjVar(baseNode->getBaseMemObj(), apOffset);
     else
     {
         assert(false && "new gep obj node kind?");
@@ -420,7 +420,7 @@ NodeID SVFIR::getGepObjVar(NodeID id, const APOffset& apOffset)
  * offset = offset % obj->getMaxFieldOffsetLimit() to create limited number of mem objects
  * maximum number of field object creation is obj->getMaxFieldOffsetLimit()
  */
-NodeID SVFIR::getGepObjVar(const MemObj* obj, const APOffset& apOffset)
+NodeID SVFIR::getGepObjVar(const BaseObjVar* obj, const APOffset& apOffset)
 {
     NodeID base = obj->getId();
 
@@ -428,7 +428,8 @@ NodeID SVFIR::getGepObjVar(const MemObj* obj, const APOffset& apOffset)
     if (obj->isFieldInsensitive())
         return getFIObjVar(obj);
 
-    APOffset newLS = pag->getSymbolInfo()->getModulusOffset(obj, apOffset);
+    const MemObj* mem = getObject(base);
+    APOffset newLS = pag->getSymbolInfo()->getModulusOffset(mem, apOffset);
 
     // Base and first field are the same memory location.
     if (Options::FirstFieldEqBase() && newLS == 0) return base;
@@ -447,7 +448,7 @@ NodeID SVFIR::getGepObjVar(const MemObj* obj, const APOffset& apOffset)
 /*!
  * Add a field obj node, this method can only invoked by getGepObjVar
  */
-NodeID SVFIR::addGepObjNode(const MemObj* obj, const APOffset& apOffset, const NodeID gepId)
+NodeID SVFIR::addGepObjNode(const BaseObjVar* obj, const APOffset& apOffset, const NodeID gepId)
 {
     //assert(findPAGNode(i) == false && "this node should not be created before");
     NodeID base = obj->getId();
@@ -468,7 +469,7 @@ NodeID SVFIR::addFIObjNode(const MemObj* obj)
     //assert(findPAGNode(i) == false && "this node should not be created before");
     NodeID base = obj->getId();
     memToFieldsMap[base].set(obj->getId());
-    BaseObjVar*node = new BaseObjVar(obj->getValue(), obj->getId(), obj);
+    BaseObjVar*node = new BaseObjVar(obj->getValue(), obj->getId(), obj->getObjTypeInfo());
     return addObjNode(obj->getValue(), node, obj->getId());
 }
 
@@ -499,8 +500,8 @@ NodeBS& SVFIR::getAllFieldsObjVars(NodeID id)
 {
     const SVFVar* node = pag->getGNode(id);
     assert(SVFUtil::isa<ObjVar>(node) && "need an object node");
-    const ObjVar* obj = SVFUtil::cast<ObjVar>(node);
-    return getAllFieldsObjVars(obj->getMemObj());
+   // const ObjVar* obj = SVFUtil::cast<ObjVar>(node);
+    return getAllFieldsObjVars(this->getBaseObj(id));
 }
 
 /*!
@@ -512,11 +513,11 @@ NodeBS SVFIR::getFieldsAfterCollapse(NodeID id)
 {
     const SVFVar* node = pag->getGNode(id);
     assert(SVFUtil::isa<ObjVar>(node) && "need an object node");
-    const MemObj* mem = SVFUtil::cast<ObjVar>(node)->getMemObj();
+    const MemObj* mem = getObject(id);
     if(mem->isFieldInsensitive())
     {
         NodeBS bs;
-        bs.set(getFIObjVar(mem));
+        bs.set(getFIObjVar(node->getId()));
         return bs;
     }
     else

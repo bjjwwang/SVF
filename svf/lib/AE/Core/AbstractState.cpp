@@ -182,7 +182,7 @@ void AbstractState::initObjVar(ObjVar* objVar)
 
     // Check if the object variable has an associated value
 
-    const MemObj* obj = objVar->getMemObj();
+    const MemObj* obj = PAG::getPAG()->getObject(objVar);
 
     // Handle constant data, arrays, and structures
     if (obj->isConstDataOrConstGlobal() || obj->isConstantArray() || obj->isConstantStruct())
@@ -473,7 +473,7 @@ const SVFType* AbstractState::getPointeeElement(NodeID id)
             NodeID addr_id = AbstractState::getInternalID(addr);
             if (addr_id == 0) // nullptr has no memobj, skip
                 continue;
-            return SVFUtil::dyn_cast<ObjVar>(svfir->getGNode(addr_id))->getMemObj()->getType();
+            return SVFUtil::dyn_cast<ObjVar>(svfir->getGNode(addr_id))->getBaseMemObj()->getType();
         }
     }
     else
@@ -488,10 +488,9 @@ u32_t AbstractState::getAllocaInstByteSize(const AddrStmt *addr)
     SVFIR* svfir = PAG::getPAG();
     if (const ObjVar* objvar = SVFUtil::dyn_cast<ObjVar>(addr->getRHSVar()))
     {
-        objvar->getType();
-        if (objvar->getMemObj()->isConstantByteSize())
+        if (objvar->getBaseMemObj()->isConstantByteSize())
         {
-            u32_t sz = objvar->getMemObj()->getByteSizeOfObj();
+            u32_t sz = objvar->getBaseMemObj()->getByteSizeOfObj();
             return sz;
         }
 

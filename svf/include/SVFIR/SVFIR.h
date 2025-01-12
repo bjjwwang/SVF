@@ -424,17 +424,17 @@ public:
 
     inline const MemObj*getObject(const ObjVar* node) const
     {
-        return node->getMemObj();
+        return symInfo->getObj(node->getId());
     }
     //@}
 
-    /// Get a field SVFIR Object node according to base mem obj and offset
-    NodeID getGepObjVar(const MemObj* obj, const APOffset& ap);
+    /// Get a field SVFIR Object node according to base obj and offset
+    NodeID getGepObjVar(const BaseObjVar* obj, const APOffset& ap);
     /// Get a field obj SVFIR node according to a mem obj and a given offset
     NodeID getGepObjVar(NodeID id, const APOffset& ap) ;
     /// Get a field-insensitive obj SVFIR node according to a mem obj
     //@{
-    inline NodeID getFIObjVar(const MemObj* obj) const
+    inline NodeID getFIObjVar(const BaseObjVar* obj) const
     {
         return obj->getId();
     }
@@ -483,7 +483,7 @@ public:
         const SVFVar* node = pag->getGNode(id);
         assert(SVFUtil::isa<ObjVar>(node) && "need an object node");
         const ObjVar* obj = SVFUtil::cast<ObjVar>(node);
-        return obj->getMemObj();
+        return symInfo->getObj(obj->getId());
     }
     //@}
 
@@ -651,7 +651,7 @@ private:
         const MemObj* mem = getMemObj(curInst);
         NodeID base = mem->getId();
         memToFieldsMap[base].set(mem->getId());
-        ConstantFPObjVar* node = new ConstantFPObjVar(curInst, dval, mem->getId(), mem);
+        ConstantFPObjVar* node = new ConstantFPObjVar(dval, mem->getId(), mem);
         return addObjNode(curInst, node, mem->getId());
     }
 
@@ -661,7 +661,7 @@ private:
         NodeID base = mem->getId();
         memToFieldsMap[base].set(mem->getId());
         ConstantIntObjVar* node =
-            new ConstantIntObjVar(curInst, intValue.first, intValue.second, mem->getId(), mem);
+            new ConstantIntObjVar(intValue.first, intValue.second, mem->getId(), mem);
         return addObjNode(curInst, node, mem->getId());
     }
 
@@ -671,7 +671,7 @@ private:
         const MemObj* mem = getMemObj(curInst);
         NodeID base = mem->getId();
         memToFieldsMap[base].set(mem->getId());
-        ConstantNullPtrObjVar* node = new ConstantNullPtrObjVar(curInst, mem->getId(), mem);
+        ConstantNullPtrObjVar* node = new ConstantNullPtrObjVar(mem->getId(), mem);
         return addObjNode(mem->getValue(), node, mem->getId());
     }
 
@@ -680,7 +680,7 @@ private:
         const MemObj* mem = getMemObj(curInst);
         NodeID base = mem->getId();
         memToFieldsMap[base].set(mem->getId());
-        GlobalObjVar* node = new GlobalObjVar(curInst, mem->getId(), mem);
+        GlobalObjVar* node = new GlobalObjVar(mem->getId(), mem);
         return addObjNode(mem->getValue(), node, mem->getId());
     }
 
@@ -689,7 +689,7 @@ private:
         const MemObj* mem = getMemObj(curInst);
         NodeID base = mem->getId();
         memToFieldsMap[base].set(mem->getId());
-        ConstantDataObjVar* node = new ConstantDataObjVar(curInst, mem->getId(), mem);
+        ConstantDataObjVar* node = new ConstantDataObjVar(mem->getId(), mem);
         return addObjNode(mem->getValue(), node, mem->getId());
     }
 
@@ -709,7 +709,7 @@ private:
     /// Add a temp field value node, this method can only invoked by getGepValVar
     NodeID addGepValNode(const SVFValue* curInst,const SVFValue* val, const AccessPath& ap, NodeID i, const SVFType* type);
     /// Add a field obj node, this method can only invoked by getGepObjVar
-    NodeID addGepObjNode(const MemObj* obj, const APOffset& apOffset, const NodeID gepId);
+    NodeID addGepObjNode(const BaseObjVar* obj, const APOffset& apOffset, const NodeID gepId);
     /// Add a field-insensitive node, this method can only invoked by getFIGepObjNode
     NodeID addFIObjNode(const MemObj* obj);
 

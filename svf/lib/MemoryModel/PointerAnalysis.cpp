@@ -153,7 +153,7 @@ void PointerAnalysis::resetObjFieldSensitive()
     for (SVFIR::iterator nIter = pag->begin(); nIter != pag->end(); ++nIter)
     {
         if(ObjVar* node = SVFUtil::dyn_cast<ObjVar>(nIter->second))
-            const_cast<MemObj*>(node->getMemObj())->setFieldSensitive();
+            const_cast<MemObj*>(pag->getObject(node))->setFieldSensitive();
     }
 }
 

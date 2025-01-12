@@ -109,7 +109,7 @@ void MRGenerator::collectGlobals()
     {
         if(ObjVar* obj = SVFUtil::dyn_cast<ObjVar>(nIter->second))
         {
-            if (obj->getMemObj()->isGlobalObj())
+            if (pag->getObject(obj)->isGlobalObj())
             {
                 allGlobals.set(nIter->first);
                 allGlobals |= CollectPtsChain(nIter->first);
