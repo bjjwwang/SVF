@@ -109,7 +109,7 @@ void MRGenerator::collectGlobals()
     {
         if(ObjVar* obj = SVFUtil::dyn_cast<ObjVar>(nIter->second))
         {
-            if (pag->getObject(obj)->isGlobalObj())
+            if (pag->getBaseObject(obj->getId())->isGlobalObj())
             {
                 allGlobals.set(nIter->first);
                 allGlobals |= CollectPtsChain(nIter->first);
@@ -560,7 +560,7 @@ void MRGenerator::getEscapObjviaGlobals(NodeBS& globs, const NodeBS& calleeModRe
 {
     for(NodeBS::iterator it = calleeModRef.begin(), eit = calleeModRef.end(); it!=eit; ++it)
     {
-        const MemObj* obj = pta->getPAG()->getObject(*it);
+        const BaseObjVar* obj = pta->getPAG()->getBaseObject(*it);
         (void)obj; // Suppress warning of unused variable under release build
         assert(obj && "object not found!!");
         if(allGlobals.test(*it))
@@ -574,18 +574,16 @@ void MRGenerator::getEscapObjviaGlobals(NodeBS& globs, const NodeBS& calleeModRe
  */
 bool MRGenerator::isNonLocalObject(NodeID id, const SVFFunction* curFun) const
 {
-    const MemObj* obj = pta->getPAG()->getObject(id);
-    assert(obj && "object not found!!");
+    const BaseObjVar* baseObj = pta->getPAG()->getBaseObject(id);
+    assert(baseObj && "object not found!!");
     /// if the object is heap or global
-    const BaseObjVar* pVar = pta->getPAG()->getBaseObject(id);
-    assert(pVar && "object not found!");
-    if(obj->isGlobalObj() || SVFUtil::isa<HeapObjVar, DummyObjVar>(pVar))
+    if(baseObj->isGlobalObj() || SVFUtil::isa<HeapObjVar, DummyObjVar>(baseObj))
         return true;
     /// or if the local variable of its callers
     /// or a local variable is in function recursion cycles
-    else if(SVFUtil::isa<StackObjVar>(pVar))
+    else if(SVFUtil::isa<StackObjVar>(baseObj))
     {
-        if(const SVFFunction* svffun = pVar->getFunction())
+        if(const SVFFunction* svffun = baseObj->getFunction())
         {
             if(svffun!=curFun)
                 return true;

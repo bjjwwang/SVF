@@ -428,8 +428,7 @@ NodeID SVFIR::getGepObjVar(const BaseObjVar* obj, const APOffset& apOffset)
     if (obj->isFieldInsensitive())
         return getFIObjVar(obj);
 
-    const MemObj* mem = getObject(base);
-    APOffset newLS = pag->getSymbolInfo()->getModulusOffset(mem, apOffset);
+    APOffset newLS = pag->getSymbolInfo()->getModulusOffset(obj, apOffset);
 
     // Base and first field are the same memory location.
     if (Options::FirstFieldEqBase() && newLS == 0) return base;
@@ -487,7 +486,7 @@ NodeID SVFIR::addFunObjNode(const CallGraphNode* callGraphNode, NodeID id)
 /*!
  * Get all fields object nodes of an object
  */
-NodeBS& SVFIR::getAllFieldsObjVars(const MemObj* obj)
+NodeBS& SVFIR::getAllFieldsObjVars(const BaseObjVar* obj)
 {
     NodeID base = obj->getId();
     return memToFieldsMap[base];
@@ -501,7 +500,7 @@ NodeBS& SVFIR::getAllFieldsObjVars(NodeID id)
     const SVFVar* node = pag->getGNode(id);
     assert(SVFUtil::isa<ObjVar>(node) && "need an object node");
    // const ObjVar* obj = SVFUtil::cast<ObjVar>(node);
-    return getAllFieldsObjVars(this->getBaseObj(id));
+    return getAllFieldsObjVars(this->getBaseObject(id));
 }
 
 /*!
@@ -513,11 +512,11 @@ NodeBS SVFIR::getFieldsAfterCollapse(NodeID id)
 {
     const SVFVar* node = pag->getGNode(id);
     assert(SVFUtil::isa<ObjVar>(node) && "need an object node");
-    const MemObj* mem = getObject(id);
+    const BaseObjVar* mem = getBaseObject(id);
     if(mem->isFieldInsensitive())
     {
         NodeBS bs;
-        bs.set(getFIObjVar(node->getId()));
+        bs.set(getFIObjVar(mem));
         return bs;
     }
     else

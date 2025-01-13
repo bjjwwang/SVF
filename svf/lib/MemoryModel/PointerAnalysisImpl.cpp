@@ -532,7 +532,7 @@ void BVDataPTAImpl::onTheFlyThreadCallGraphSolve(const CallSiteToFunPtrMap& call
                 {
                     if(ObjVar *objPN = SVFUtil::dyn_cast<ObjVar>(pag->getGNode(*ii)))
                     {
-                        const MemObj *obj = pag->getObject(objPN);
+                        const BaseObjVar *obj = pag->getBaseObject(objPN->getId());
                         if(obj->isFunction())
                         {
                             const SVFFunction *svfForkedFun = SVFUtil::cast<CallGraphNode>(obj->getGNode())->getFunction();
@@ -559,9 +559,9 @@ void BVDataPTAImpl::normalizePointsTo()
     for (auto t: memToFieldsMap)
     {
         NodeID base = t.first;
-        const MemObj* memObj = pag->getObject(base);
-        assert(memObj && "Invalid memobj in memToFieldsMap");
-        if (memObj->isFieldInsensitive())
+        const BaseObjVar* baseObj = pag->getBaseObject(base);
+        assert(baseObj && "Invalid memobj in memToFieldsMap");
+        if (baseObj->isFieldInsensitive())
         {
             for (NodeID id : t.second)
             {

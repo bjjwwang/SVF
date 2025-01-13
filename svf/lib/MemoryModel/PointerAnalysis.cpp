@@ -153,7 +153,7 @@ void PointerAnalysis::resetObjFieldSensitive()
     for (SVFIR::iterator nIter = pag->begin(); nIter != pag->end(); ++nIter)
     {
         if(ObjVar* node = SVFUtil::dyn_cast<ObjVar>(nIter->second))
-            const_cast<MemObj*>(pag->getObject(node))->setFieldSensitive();
+            const_cast<BaseObjVar*>(pag->getBaseObject(node->getId()))->setFieldSensitive();
     }
 }
 
@@ -396,7 +396,7 @@ void PointerAnalysis::resolveIndCalls(const CallICFGNode* cs, const PointsTo& ta
 
         if(ObjVar* objPN = SVFUtil::dyn_cast<ObjVar>(pag->getGNode(*ii)))
         {
-            const MemObj* obj = pag->getObject(objPN);
+            const BaseObjVar* obj = pag->getBaseObject(objPN->getId());
 
             if(obj->isFunction())
             {

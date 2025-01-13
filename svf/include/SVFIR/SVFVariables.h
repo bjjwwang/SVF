@@ -398,10 +398,8 @@ class BaseObjVar : public ObjVar
 private:
     /// Type information of this object
     ObjTypeInfo* typeInfo;
-    /// The unique value of this symbol/variable
-    const SVFValue* refVal;
-    /// The unique id to represent this symbol
-    SymID symId;
+
+    const SVFBaseNode* gNode;
 
 protected:
     /// Constructor to create empty ObjVar (for SVFIRReader/deserialization)
@@ -434,12 +432,18 @@ public:
 
     /// Constructor
     BaseObjVar(const SVFValue* val, SymID id, ObjTypeInfo* ti, PNODEK ty = BaseObjNode)
-        : ObjVar(val, id, ty)
+        :  ObjVar(val, id, ty), typeInfo(ti)
     {
     }
 
     virtual const BaseObjVar* getBaseMemObj() const {
         return this;
+    }
+
+    /// Get the reference value to this object
+    inline const SVFBaseNode* getGNode() const
+    {
+        return gNode;
     }
 
     /// Return name of a LLVM value
@@ -456,7 +460,7 @@ public:
     /// Get the memory object id
     inline SymID getId() const
     {
-        return symId;
+        return id;
     }
 
     /// Get obj type

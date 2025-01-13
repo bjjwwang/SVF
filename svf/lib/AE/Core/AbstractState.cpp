@@ -182,7 +182,7 @@ void AbstractState::initObjVar(ObjVar* objVar)
 
     // Check if the object variable has an associated value
 
-    const MemObj* obj = PAG::getPAG()->getObject(objVar);
+    const BaseObjVar* obj = PAG::getPAG()->getBaseObject(varId);
 
     // Handle constant data, arrays, and structures
     if (obj->isConstDataOrConstGlobal() || obj->isConstantArray() || obj->isConstantStruct())

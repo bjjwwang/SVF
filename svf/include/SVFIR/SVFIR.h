@@ -389,19 +389,6 @@ public:
     }
     //@}
 
-    /// Get memory object - Return memory object according to pag node id
-    /// return whole allocated memory object if this node is a gep obj node
-    /// return nullptr is this node is not a ObjVar type
-    //@{
-    inline const MemObj* getObject(NodeID id) const
-    {
-        const SVFVar* node = getGNode(id);
-        if (const ObjVar* objPN = SVFUtil::dyn_cast<ObjVar>(node))
-            return getObject(objPN);
-        else
-            return nullptr;
-    }
-
     inline const BaseObjVar* getBaseObject(NodeID id) const
     {
         const SVFVar* node = getGNode(id);
@@ -422,10 +409,6 @@ public:
             return SVFUtil::dyn_cast<ValVar>(node);
     }
 
-    inline const MemObj*getObject(const ObjVar* node) const
-    {
-        return symInfo->getObj(node->getId());
-    }
     //@}
 
     /// Get a field SVFIR Object node according to base obj and offset
@@ -464,10 +447,10 @@ public:
     }
     inline bool isConstantObj(NodeID id) const
     {
-        const MemObj* obj = getObject(id);
-        assert(obj && "not an object node?");
+        const BaseObjVar* baseObj = getBaseObject(id);
+        assert(baseObj && "not an object node?");
         return SymbolTableInfo::isConstantObj(id) ||
-               obj->isConstDataOrConstGlobal();
+               baseObj->isConstDataOrConstGlobal();
     }
     //@}
 
@@ -476,20 +459,15 @@ public:
     /// Get a base pointer node given a field pointer
     inline NodeID getBaseObjVar(NodeID id) const
     {
-        return getBaseObj(id)->getId();
+
+        return getBaseObject(id)->getId();
     }
-    inline const MemObj* getBaseObj(NodeID id) const
-    {
-        const SVFVar* node = pag->getGNode(id);
-        assert(SVFUtil::isa<ObjVar>(node) && "need an object node");
-        const ObjVar* obj = SVFUtil::cast<ObjVar>(node);
-        return symInfo->getObj(obj->getId());
-    }
+
     //@}
 
     /// Get all fields of an object
     //@{
-    NodeBS& getAllFieldsObjVars(const MemObj* obj);
+    NodeBS& getAllFieldsObjVars(const BaseObjVar* obj);
     NodeBS& getAllFieldsObjVars(NodeID id);
     NodeBS getFieldsAfterCollapse(NodeID id);
     //@}

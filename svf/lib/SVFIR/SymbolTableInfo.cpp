@@ -91,7 +91,7 @@ SymbolTableInfo* SymbolTableInfo::SymbolInfo()
 /*!
  * Get modulus offset given the type information
  */
-APOffset SymbolTableInfo::getModulusOffset(const MemObj* obj, const APOffset& apOffset)
+APOffset SymbolTableInfo::getModulusOffset(const BaseObjVar* obj, const APOffset& apOffset)
 {
 
     /// if the offset is negative, it's possible that we're looking for an obj node out of range

@@ -133,14 +133,14 @@ void SVFStat::performStat()
         PAGNode* node = it->second;
         if(ObjVar* obj = SVFUtil::dyn_cast<ObjVar>(node))
         {
-            const MemObj* mem = pag->getObject(obj);;
-            if (memObjSet.insert(mem->getId()).second == false)
+            const BaseObjVar* baseObj = pag->getBaseObject(obj->getId());;
+            if (memObjSet.insert(baseObj->getId()).second == false)
                 continue;
-            if(mem->isBlackHoleObj())
+            if(baseObj->isBlackHoleObj())
                 continue;
-            if(mem->isFunction())
+            if(baseObj->isFunction())
                 numOfFunction++;
-            if(mem->isGlobalObj())
+            if(baseObj->isGlobalObj())
                 numOfGlobal++;
             if (pag->getBaseObject(obj->getId()) &&
                     SVFUtil::isa<StackObjVar>(
@@ -152,20 +152,20 @@ void SVFStat::performStat()
             {
                 numOfHeap++;
             }
-            if(mem->isVarArray())
+            if(baseObj->isVarArray())
                 numOfHasVarArray++;
-            if(mem->isVarStruct())
+            if(baseObj->isVarStruct())
                 numOfHasVarStruct++;
-            if(mem->isConstantArray())
+            if(baseObj->isConstantArray())
                 numOfHasConstArray++;
-            if(mem->isConstantStruct())
+            if(baseObj->isConstantStruct())
                 numOfHasConstStruct++;
-            if(mem->getType()->isPointerTy() == false)
+            if(baseObj->getType()->isPointerTy() == false)
                 numOfScalar++;
-            if(mem->isConstDataOrConstGlobal())
+            if(baseObj->isConstDataOrConstGlobal())
                 numOfConstant++;
 
-            if (mem->isFieldInsensitive())
+            if (baseObj->isFieldInsensitive())
                 fiObjNumber++;
             else
                 fsObjNumber++;
