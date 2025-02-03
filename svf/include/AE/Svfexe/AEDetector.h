@@ -336,6 +336,7 @@ public:
     NullPtrDerefDetector()
     {
         kind = NULLPTR_DEREF;
+        initializeHandlers();
     }
 
     /**
@@ -413,10 +414,19 @@ public:
      */
     void reportBug()
     {
-        std::cerr << "###################### Null Pointer Dereference (" + std::to_string(stmtToBugInfo.size())
+        std::cerr << "###################### Null Pointer Dereference (" + std::to_string(nullptrBugInfo.size())
                     + " found) ######################\n";
         std::cerr << "---------------------------------------------\n";
-        for (const auto& it : stmtToBugInfo) {
+        for (const auto& it : nullptrBugInfo) {
+            const SVFStmt *s = it.first;
+            std::cerr << "Location: " << s->toString() << "\n---------------------------------------------\n";
+        }
+
+
+        std::cerr << "###################### Dangling Pointer Dereference (" + std::to_string(dangleptrBugInfo.size())
+                    + " found) ######################\n";
+        std::cerr << "---------------------------------------------\n";
+        for (const auto& it : dangleptrBugInfo) {
             const SVFStmt *s = it.first;
             std::cerr << "Location: " << s->toString() << "\n---------------------------------------------\n";
         }
@@ -426,7 +436,7 @@ public:
      * @brief record a bug.
      * @param stmt The SVF statement that triggers the null pointer dereference.
      */
-    void recordBug(const SVFStmt *stmt)
+    void recordBug(const SVFStmt *stmt, Map<const SVFStmt*, std::string> &bugMap)
     {
         const ICFGNode *eventInst = stmt->getICFGNode();
         SVFBugEvent sourceInstEvent(SVFBugEvent::EventType::SourceInst, eventInst);
@@ -434,12 +444,19 @@ public:
         std::string loc = sourceInstEvent.getEventLoc(); // Get the location of the last event in the stack
 
         if (loc == "") {
-            stmtToBugInfo[stmt] = loc;
+            bugMap[stmt] = loc;
         } else if (bugLoc.find(loc) == bugLoc.end()) {
             bugLoc.insert(loc);
-            stmtToBugInfo[stmt] = loc;
+            bugMap[stmt] = loc;
         }
     }
+
+    enum class PointerState {
+        SAFE,
+        NULLPTR,
+        DANGLEPTR,
+        UNINIT
+    };
 
     /**
      * @brief Checks if pointer can be safely dereferenced.
@@ -447,12 +464,32 @@ public:
      * @param value Pointer to the SVF value.
      * @return True if the pointer dereference is safe, false otherwise.
      */
-    bool canSafelyDerefPtr(AbstractState& as, const SVF::SVFVar* value);
+    PointerState canSafelyDerefPtr(AbstractState& as, const SVF::SVFVar* value);
 
 
 private:
     Set<std::string> bugLoc;    ///< Set of locations where bugs have been reported.
-    Map<const SVFStmt*, std::string> stmtToBugInfo; ///< Maps SVF stmt to bug information.
+    Map<const SVFStmt*, std::string> nullptrBugInfo; ///< Maps SVF stmt to bug information.
+    Map<const SVFStmt*, std::string> dangleptrBugInfo; ///< Maps SVF stmt to bug information.
+
+    using Handler = std::function<void(const SVFStmt*)>;
+
+    Map<PointerState, Handler> handlers;
+
+    void initializeHandlers() {
+        handlers[PointerState::SAFE] = [](const SVFStmt* stmt) { /* Do nothing */ };
+        handlers[PointerState::NULLPTR] = [this](const SVFStmt* stmt) { recordBug(stmt, nullptrBugInfo); };
+        handlers[PointerState::UNINIT] = [this](const SVFStmt* stmt) { recordBug(stmt, nullptrBugInfo); };
+        handlers[PointerState::DANGLEPTR] = [this](const SVFStmt* stmt) { recordBug(stmt, dangleptrBugInfo); };
+    }
+
+    void handlePointer(PointerState state, const SVFStmt* stmt) const {
+        try {
+            handlers.at(state)(stmt); // Dynamically invoke the handler
+        } catch (const std::runtime_error& e) {
+            std::cerr << e.what() << std::endl;
+        }
+    }
 };
 
 }

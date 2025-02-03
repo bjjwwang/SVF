@@ -503,6 +503,8 @@ bool BufOverflowDetector::canSafelyAccessMemory(AbstractState& as, const SVF::SV
     return true;
 }
 
+using PointerState = NullPtrDerefDetector::PointerState;
+
 /**
  * @brief Detects null pointer dereference issues within a given ICFG node.
  *
@@ -512,13 +514,11 @@ bool BufOverflowDetector::canSafelyAccessMemory(AbstractState& as, const SVF::SV
 void NullPtrDerefDetector::detect(AbstractState& as, const ICFGNode* node) {
     for (const SVFStmt* stmt : node->getSVFStmts()) {
         if (const LoadStmt* load = SVFUtil::dyn_cast<LoadStmt>(stmt)) {
-            if (!canSafelyDerefPtr(as, load->getRHSVar())) {
-                recordBug(load);
-            }
+            PointerState state = canSafelyDerefPtr(as, load->getRHSVar());
+            handlePointer(state, stmt);
         } else if (const StoreStmt* store = SVFUtil::dyn_cast<StoreStmt>(stmt)) {
-            if (!canSafelyDerefPtr(as, store->getLHSVar())) {
-                recordBug(store);
-            }
+            PointerState state = canSafelyDerefPtr(as, store->getLHSVar());
+            handlePointer(state, stmt);
         }
     }
 }
@@ -529,24 +529,23 @@ void NullPtrDerefDetector::detect(AbstractState& as, const ICFGNode* node) {
  * @param value Pointer to the SVF value of the pointer being dereferenced.
  * @return True if the pointer dereference is safe, false otherwise.
  */
-bool NullPtrDerefDetector::canSafelyDerefPtr(AbstractState& as, const SVF::SVFVar* value) {
+PointerState NullPtrDerefDetector::canSafelyDerefPtr(AbstractState& as, const SVF::SVFVar* value) {
     NodeID value_id = value->getId();
-    if (isUninit(as[value_id])) return false;
-    if (!as[value_id].isAddr()) return true;    // Loading an Interval Value
+    if (isUninit(as[value_id])) return PointerState::UNINIT;
+    if (!as[value_id].isAddr()) return PointerState::SAFE;    // Loading an Interval Value
     AbstractValue &addrs = as[value_id];
-    if (addrs.getAddrs().isAllocated()) return true;
+    if (addrs.getAddrs().isAllocated()) return PointerState::SAFE;
     for (const auto &addr: addrs.getAddrs()) {
         AbstractValue &v = as.load(addr);
         if (isAllocated(v))
-            return true;
+            return PointerState::SAFE;
         if (isNull(v))
-            return false;
+            return PointerState::NULLPTR;
         if (isDangling(v)) {
-            std::cout << "Dangling Pointer Detected!!!!!!!!!!!!!!!!!!!!!!" << std::endl;
-            return false;
+            return PointerState::DANGLEPTR;
         }
     }
-    return true;
+    return PointerState::SAFE;
 }
 
 
@@ -569,7 +568,7 @@ void NullPtrDerefDetector::handleStubFunctions(const SVF::CallICFGNode* callNode
             AbstractInterpretation::getAEInstance().getAbsStateFromTrace(
                 callNode);
         const SVFVar* arg0Val = callNode->getArgument(0);
-        bool isSafe = canSafelyDerefPtr(as, arg0Val);
+        bool isSafe = canSafelyDerefPtr(as, arg0Val) == PointerState::SAFE;
         if (!isSafe) {
             std::cout << "detect null pointer deference success: " << callNode->toString() << std::endl;
             return;
@@ -589,7 +588,7 @@ void NullPtrDerefDetector::handleStubFunctions(const SVF::CallICFGNode* callNode
         if (callNode->arg_size() < 1) return;
         AbstractState&as = AbstractInterpretation::getAEInstance().getAbsStateFromTrace(callNode);
         const SVFVar* arg0Val = callNode->getArgument(0);
-        bool isSafe = canSafelyDerefPtr(as, arg0Val);
+        bool isSafe = canSafelyDerefPtr(as, arg0Val) == PointerState::SAFE;
         if (isSafe) {
             std::cout << "safe load pointer success: " << callNode->toString() << std::endl;
             return;
