@@ -33,7 +33,12 @@
 #define AddressMask 0x7f000000
 #define FlippedAddressMask (AddressMask^0xffffffff)
 // the address of the black hole, getVirtualMemAddress(2); Also used to represent nullptr.
-#define BlackHoleAddr 0x7f000000 + 2
+#define BlackHoleAddr (0x7f000000 + 2)
+
+// the address reserved for allocated address.
+#define AllocAddr (0x7f000000 + 3)
+// the address reserved for the dangling pointer.
+#define FreeAddr (0x7f000000 + 4)
 
 #include "Util/GeneralType.h"
 #include <sstream>
@@ -176,6 +181,16 @@ public:
     inline bool isBottom() const
     {
         return empty();
+    }
+
+    inline bool isAllocated() const
+    {
+        return _addrs.find(AllocAddr) != _addrs.end() && !isFree();
+    }
+
+    inline bool isFree() const
+    {
+        return _addrs.find(FreeAddr) != _addrs.end();
     }
 
     inline void setTop()
