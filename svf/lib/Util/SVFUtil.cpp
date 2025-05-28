@@ -278,8 +278,27 @@ bool SVFUtil::startAnalysisLimitTimer(unsigned timeLimit)
 {
     if (timeLimit == 0) return false;
 
-    // If an alarm is already set, don't set another. That means this analysis
-    // is part of another which has a time limit.
+#ifdef _WIN32
+    // Windows implementation using SetTimer
+    static HANDLE hTimer = NULL;
+    if (hTimer != NULL) {
+        // Timer already set
+        return false;
+    }
+    hTimer = CreateWaitableTimer(NULL, TRUE, NULL);
+    if (hTimer == NULL) {
+        return false;
+    }
+    LARGE_INTEGER li;
+    li.QuadPart = -((LONGLONG)timeLimit * 10000000); // Convert seconds to 100-nanosecond intervals
+    if (!SetWaitableTimer(hTimer, &li, 0, NULL, NULL, FALSE)) {
+        CloseHandle(hTimer);
+        hTimer = NULL;
+        return false;
+    }
+    return true;
+#else
+    // Unix implementation using alarm
     unsigned remainingSeconds = alarm(0);
     if (remainingSeconds != 0)
     {
@@ -291,13 +310,23 @@ bool SVFUtil::startAnalysisLimitTimer(unsigned timeLimit)
     signal(SIGALRM, &timeLimitReached);
     alarm(timeLimit);
     return true;
+#endif
 }
 
 /// Stops an analysis timer. limitTimerSet indicates whether the caller set the
 /// timer or not (return value of startLimitTimer).
 void SVFUtil::stopAnalysisLimitTimer(bool limitTimerSet)
 {
+#ifdef _WIN32
+    static HANDLE hTimer = NULL;
+    if (limitTimerSet && hTimer != NULL) {
+        CancelWaitableTimer(hTimer);
+        CloseHandle(hTimer);
+        hTimer = NULL;
+    }
+#else
     if (limitTimerSet) alarm(0);
+#endif
 }
 
 /// Match arguments for callsite at caller and callee

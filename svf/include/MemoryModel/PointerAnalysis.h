@@ -30,8 +30,12 @@
 #ifndef POINTERANALYSIS_H_
 #define POINTERANALYSIS_H_
 
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <unistd.h>
 #include <signal.h>
+#endif
 
 #include "Graphs/CHG.h"
 #include "Graphs/ThreadCallGraph.h"
