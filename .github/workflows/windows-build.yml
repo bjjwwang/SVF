@@ -1,0 +1,56 @@
+name: svf-windows-build
+
+on: [push]
+
+env:
+  SVF_CTIR: 1
+  SVF_Z3: 1
+  SVF_DIR: $GITHUB_WORKSPACE
+  LLVM_URL: "https://github.com/bjjwwang/SVF-LLVM/releases/download/16.0.0/llvm-windows-build.zip"
+  Z3_URL: "https://github.com/Z3Prover/z3/releases/download/z3-4.15.0/z3-4.15.0-x64-win.zip"
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Download and extract LLVM
+        run: |
+          Invoke-WebRequest -Uri $env:LLVM_URL -OutFile llvm.zip
+          Expand-Archive -Path llvm.zip -DestinationPath .
+          $env:LLVM_DIR = "$env:GITHUB_WORKSPACE\llvm-windows-build"
+          echo "LLVM_DIR=$env:LLVM_DIR" >> $env:GITHUB_ENV
+
+      - name: Download and extract Z3
+        run: |
+          Invoke-WebRequest -Uri $env:Z3_URL -OutFile z3.zip
+          Expand-Archive -Path z3.zip -DestinationPath .
+          $env:Z3_DIR = "$env:GITHUB_WORKSPACE\z3-4.15.0-x64-win"
+          echo "Z3_DIR=$env:Z3_DIR" >> $env:GITHUB_ENV
+
+      - name: Setup CMake
+        uses: jwlawson/actions-setup-cmake@v1.14
+        with:
+          cmake-version: '3.23.0'
+
+      - name: Clone Test-Suite
+        run: |
+          git clone "https://github.com/SVF-tools/Test-Suite.git"
+
+      - name: Build SVF
+        run: |
+          mkdir build
+          cd build
+          cmake .. -G "Visual Studio 17 2022" -A x64 ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            -DLLVM_DIR="$env:LLVM_DIR" ^
+            -DZ3_DIR="$env:Z3_DIR" ^
+            -DSVF_CTIR=ON ^
+            -DSVF_Z3=ON
+          cmake --build . --config Release
+
+      - name: Run Tests
+        run: |
+          cd build
+          ctest -C Release -R "objtype|wpa_tests|dvf_tests|diff_tests-ander|diff_tests-fs|diff_tests-wr-ander|mem_leak|double_free|symabs|ae_assert_test|ae_overflow_test|ae_nullptr_deref_tests|ae_recursion_tests|cfl_tests" -VV 
