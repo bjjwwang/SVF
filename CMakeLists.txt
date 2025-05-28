@@ -51,11 +51,7 @@ if(WIN32
    OR MSYS
    OR CYGWIN
 )
-  file(
-    COPY ${SVF_BINARY_DIR}/compile_commands.json
-    DESTINATION ${CMAKE_CURRENT_LIST_DIR}
-    RENAME compile_commands.json
-  )
+  file(COPY ${SVF_BINARY_DIR}/compile_commands.json DESTINATION ${CMAKE_CURRENT_LIST_DIR})
 else()
   file(CREATE_LINK ${SVF_BINARY_DIR}/compile_commands.json compile_commands.json COPY_ON_ERROR SYMBOLIC)
 endif()

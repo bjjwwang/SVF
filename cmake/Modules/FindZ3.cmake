@@ -15,13 +15,39 @@ else()
     message(STATUS "Failed to find upstream/system Z3 package; reverting to manual search")
   endif()
 
+  # Define library names for different platforms
+  if(WIN32)
+    set(Z3_LIB_NAMES
+        z3
+        libz3
+        z3d
+        libz3d
+    )
+  else()
+    set(Z3_LIB_NAMES
+        z3
+        libz3
+    )
+  endif()
+
   # Fall back to explicit manual header + lib search (prioritise searching $Z3_DIR)
   find_library(
     Z3_LIBRARY_DIR
-    NAMES z3 libz3
+    NAMES ${Z3_LIB_NAMES}
     HINTS ${Z3_HOME} $ENV{Z3_HOME} ${Z3_DIR} $ENV{Z3_DIR}
     PATH_SUFFIXES bin lib ${CMAKE_INSTALL_BINDIR} ${CMAKE_INSTALL_LIBDIR}
   )
+
+  # On Windows, also look for DLLs
+  if(WIN32)
+    find_file(
+      Z3_DLL
+      NAMES z3.dll libz3.dll
+      HINTS ${Z3_HOME} $ENV{Z3_HOME} ${Z3_DIR} $ENV{Z3_DIR}
+      PATH_SUFFIXES bin ${CMAKE_INSTALL_BINDIR}
+    )
+  endif()
+
   find_path(
     Z3_INCLUDE_DIR
     NAMES z3++.h
@@ -68,18 +94,36 @@ else()
 
   # Validate that both the public headers & the library files were found
   include(FindPackageHandleStandardArgs)
-  find_package_handle_standard_args(
-    Z3
-    REQUIRED_VARS Z3_INCLUDE_DIR Z3_LIBRARY_DIR
-    VERSION_VAR Z3_VERSION_STRING
-  )
+  if(WIN32)
+    find_package_handle_standard_args(
+      Z3
+      REQUIRED_VARS Z3_INCLUDE_DIR Z3_LIBRARY_DIR Z3_DLL
+      VERSION_VAR Z3_VERSION_STRING
+    )
+  else()
+    find_package_handle_standard_args(
+      Z3
+      REQUIRED_VARS Z3_INCLUDE_DIR Z3_LIBRARY_DIR
+      VERSION_VAR Z3_VERSION_STRING
+    )
+  endif()
 
   # Create an imported target if all required variables were found
   if(Z3_FOUND)
     add_library(z3::libz3 UNKNOWN IMPORTED)
     set_target_properties(z3::libz3 PROPERTIES IMPORTED_LOCATION "${Z3_LIBRARY_DIR}")
     set_target_properties(z3::libz3 PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${Z3_INCLUDE_DIR}")
+    
+    # On Windows, set the DLL location
+    if(WIN32)
+      set_target_properties(z3::libz3 PROPERTIES IMPORTED_LOCATION_DEBUG "${Z3_DLL}")
+      set_target_properties(z3::libz3 PROPERTIES IMPORTED_LOCATION_RELEASE "${Z3_DLL}")
+    endif()
+
     message(STATUS "Manually found Z3 (libs: ${Z3_LIBRARY_DIR}; public headers: ${Z3_INCLUDE_DIR})")
+    if(WIN32)
+      message(STATUS "Z3 DLL location: ${Z3_DLL}")
+    endif()
 
     # Expose other equivalents for variables exported by the regular Z3 CMake package
     set(Z3_CXX_INCLUDE_DIRS ${Z3_INCLUDE_DIR})
