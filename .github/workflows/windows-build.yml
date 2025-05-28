@@ -20,7 +20,8 @@ jobs:
           Invoke-WebRequest -Uri $env:LLVM_URL -OutFile llvm.zip
           Write-Host "Current directory before extraction:"
           Get-ChildItem
-          Expand-Archive -Path llvm.zip -DestinationPath . -Force
+          New-Item -ItemType Directory -Force -Path "$env:GITHUB_WORKSPACE\llvm-windows-build"
+          Expand-Archive -Path llvm.zip -DestinationPath "$env:GITHUB_WORKSPACE\llvm-windows-build" -Force
           Write-Host "Current directory after extraction:"
           Get-ChildItem
           $env:LLVM_DIR = "$env:GITHUB_WORKSPACE\llvm-windows-build"
