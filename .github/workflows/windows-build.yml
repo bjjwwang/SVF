@@ -34,9 +34,18 @@ jobs:
         with:
           cmake-version: '3.23.0'
 
+      - name: Configure Git for Windows
+        run: |
+          git config --global core.longpaths true
+          git config --global core.protectNTFS false
+
       - name: Clone Test-Suite
         run: |
-          git clone "https://github.com/SVF-tools/Test-Suite.git"
+          git clone --depth 1 "https://github.com/SVF-tools/Test-Suite.git"
+          cd Test-Suite
+          git config core.longpaths true
+          git config core.protectNTFS false
+          git restore --source=HEAD :/
 
       - name: Build SVF
         run: |
