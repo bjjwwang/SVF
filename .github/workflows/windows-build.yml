@@ -21,6 +21,8 @@ jobs:
           Expand-Archive -Path llvm.zip -DestinationPath .
           $env:LLVM_DIR = "$env:GITHUB_WORKSPACE\llvm-windows-build"
           echo "LLVM_DIR=$env:LLVM_DIR" >> $env:GITHUB_ENV
+          Write-Host "LLVM CMake directory structure:"
+          Get-ChildItem -Path "$env:LLVM_DIR\lib\cmake\llvm" -Recurse
 
       - name: Download and extract Z3
         run: |
