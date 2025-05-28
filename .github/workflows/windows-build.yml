@@ -58,7 +58,8 @@ jobs:
             "-DLLVM_DIR=$env:LLVM_DIR",
             "-DZ3_DIR=$env:Z3_DIR",
             "-DSVF_CTIR=ON",
-            "-DSVF_Z3=ON"
+            "-DSVF_Z3=ON",
+            "-DSVF_ENABLE_RTTI=OFF"
           )
           cmake $cmakeArgs
           cmake --build . --config Release 
