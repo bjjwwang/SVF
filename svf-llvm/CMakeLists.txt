@@ -91,13 +91,23 @@ else()
 endif()
 
 # Add a custom command to compile the extapi.bc bitcode file from extapi.c
-add_custom_command(
-  OUTPUT ${SVF_BUILD_EXTAPI_BC}
-  COMMAND ${LLVM_CLANG} -w -S -c $<$<NOT:$<PLATFORM_ID:Windows>>:-fPIC> -std=gnu11 -emit-llvm -o ${SVF_BUILD_EXTAPI_BC} ${EXTAPI_SRC}
-  COMMENT "Generating extapi.bc LLVM bitcode file..."
-  MAIN_DEPENDENCY ${EXTAPI_SRC}
-  DEPENDS ${EXTAPI_SRC}
-)
+if(WIN32)
+  add_custom_command(
+    OUTPUT ${SVF_BUILD_EXTAPI_BC}
+    COMMAND ${LLVM_CLANG} -w -S -c -std=gnu11 -emit-llvm -o ${SVF_BUILD_EXTAPI_BC} ${EXTAPI_SRC}
+    COMMENT "Generating extapi.bc LLVM bitcode file..."
+    MAIN_DEPENDENCY ${EXTAPI_SRC}
+    DEPENDS ${EXTAPI_SRC}
+  )
+else()
+  add_custom_command(
+    OUTPUT ${SVF_BUILD_EXTAPI_BC}
+    COMMAND ${LLVM_CLANG} -w -S -c -fPIC -std=gnu11 -emit-llvm -o ${SVF_BUILD_EXTAPI_BC} ${EXTAPI_SRC}
+    COMMENT "Generating extapi.bc LLVM bitcode file..."
+    MAIN_DEPENDENCY ${EXTAPI_SRC}
+    DEPENDS ${EXTAPI_SRC}
+  )
+endif()
 
 # Add a custom target that has the custom command as its creation command
 add_custom_target(gen_extapi_ir ALL DEPENDS ${SVF_BUILD_EXTAPI_BC})
