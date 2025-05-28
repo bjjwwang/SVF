@@ -59,7 +59,8 @@ jobs:
             "-DZ3_DIR=$env:Z3_DIR",
             "-DSVF_CTIR=ON",
             "-DSVF_Z3=ON",
-            "-DSVF_ENABLE_RTTI=OFF"
+            "-DSVF_ENABLE_RTTI=OFF",
+            "-DSVF_USE_PIC=OFF"
           )
           cmake $cmakeArgs
           cmake --build . --config Release 
