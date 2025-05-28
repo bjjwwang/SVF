@@ -19,7 +19,7 @@ jobs:
         run: |
           Invoke-WebRequest -Uri $env:LLVM_URL -OutFile llvm.zip
           Expand-Archive -Path llvm.zip -DestinationPath .
-          $env:LLVM_DIR = "$env:GITHUB_WORKSPACE\llvm-windows-build\lib\cmake\llvm"
+          $env:LLVM_DIR = "$env:GITHUB_WORKSPACE\llvm-windows-build"
           echo "LLVM_DIR=$env:LLVM_DIR" >> $env:GITHUB_ENV
 
       - name: Download and extract Z3
