@@ -45,17 +45,6 @@ include(CMakePackageConfigHelpers)
 # Allow checking for IPO support by the used compiler
 include(CheckIPOSupported)
 
-# Since SVF builds into non-standard directories; symlink/copy compile commands into top-level directory
-if(WIN32
-   OR MINGW
-   OR MSYS
-   OR CYGWIN
-)
-  file(COPY ${SVF_BINARY_DIR}/compile_commands.json DESTINATION ${CMAKE_CURRENT_LIST_DIR})
-else()
-  file(CREATE_LINK ${SVF_BINARY_DIR}/compile_commands.json compile_commands.json COPY_ON_ERROR SYMBOLIC)
-endif()
-
 # Ensure the configuration input files & module definitions are findable by default
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake" "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules")
 
