@@ -22,7 +22,12 @@ jobs:
           $env:LLVM_DIR = "$env:GITHUB_WORKSPACE\llvm-windows-build"
           echo "LLVM_DIR=$env:LLVM_DIR" >> $env:GITHUB_ENV
           Write-Host "LLVM directory structure:"
-          tree /F /A "$env:LLVM_DIR" /L 2
+          Get-ChildItem -Path $env:LLVM_DIR -Directory | ForEach-Object {
+            Write-Host "`n$($_.Name):"
+            Get-ChildItem -Path $_.FullName -Directory | ForEach-Object {
+              Write-Host "  $($_.Name)"
+            }
+          }
 
       - name: Download and extract Z3
         run: |
