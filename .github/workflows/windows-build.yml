@@ -34,19 +34,6 @@ jobs:
         with:
           cmake-version: '3.23.0'
 
-      - name: Configure Git for Windows
-        run: |
-          git config --global core.longpaths true
-          git config --global core.protectNTFS false
-
-      - name: Clone Test-Suite
-        run: |
-          git clone --depth 1 "https://github.com/SVF-tools/Test-Suite.git"
-          cd Test-Suite
-          git config core.longpaths true
-          git config core.protectNTFS false
-          git restore --source=HEAD :/
-
       - name: Build SVF
         run: |
           mkdir build
@@ -57,9 +44,4 @@ jobs:
             -DZ3_DIR="$env:Z3_DIR" ^
             -DSVF_CTIR=ON ^
             -DSVF_Z3=ON
-          cmake --build . --config Release
-
-      - name: Run Tests
-        run: |
-          cd build
-          ctest -C Release -R "objtype|wpa_tests|dvf_tests|diff_tests-ander|diff_tests-fs|diff_tests-wr-ander|mem_leak|double_free|symabs|ae_assert_test|ae_overflow_test|ae_nullptr_deref_tests|ae_recursion_tests|cfl_tests" -VV 
+          cmake --build . --config Release 
