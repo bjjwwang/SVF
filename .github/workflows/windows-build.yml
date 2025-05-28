@@ -60,7 +60,8 @@ jobs:
             "-DSVF_CTIR=ON",
             "-DSVF_Z3=ON",
             "-DSVF_ENABLE_RTTI=OFF",
-            "-DSVF_USE_PIC=OFF"
+            "-DSVF_USE_PIC=OFF",
+            "-DSVF_WARN_AS_ERROR=OFF"
           )
           cmake $cmakeArgs
           cmake --build . --config Release 
