@@ -33,7 +33,11 @@
 #include "Graphs/CallGraph.h"
 #include "SVFIR/SVFVariables.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/resource.h>		/// increase stack size
+#endif
 
 using namespace SVF;
 
@@ -228,6 +232,16 @@ bool SVFUtil::getMemoryUsageKB(u32_t* vmrss_kb, u32_t* vmsize_kb)
  */
 void SVFUtil::increaseStackSize()
 {
+#ifdef _WIN32
+    // Windows implementation
+    ULONG_PTR low, high;
+    if (GetCurrentThreadStackLimits(&low, &high))
+    {
+        // Windows stack size is set at thread creation time
+        // We can't modify it after the fact
+        writeWrnMsg("Stack size modification not supported on Windows\n");
+    }
+#else
     const rlim_t kStackSize = 256L * 1024L * 1024L;   // min stack size = 256 Mb
     struct rlimit rl;
     int result = getrlimit(RLIMIT_STACK, &rl);
@@ -241,6 +255,7 @@ void SVFUtil::increaseStackSize()
                 writeWrnMsg("setrlimit returned result !=0 \n");
         }
     }
+#endif
 }
 
 
