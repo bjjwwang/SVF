@@ -52,6 +52,49 @@ else()
   llvm_map_components_to_libnames(LLVM_LIBRARIES all)
 endif()
 
+# On Windows, ensure we link against the correct LLVM libraries
+if(WIN32)
+  set(LLVM_LIBRARIES
+    LLVMCore
+    LLVMSupport
+    LLVMIRReader
+    LLVMAnalysis
+    LLVMAsmParser
+    LLVMBitReader
+    LLVMBitWriter
+    LLVMCodeGen
+    LLVMCore
+    LLVMDemangle
+    LLVMExecutionEngine
+    LLVMGlobalISel
+    LLVMInstCombine
+    LLVMInstrumentation
+    LLVMInterpreter
+    LLVMLinker
+    LLVMMC
+    LLVMMCDisassembler
+    LLVMMCJIT
+    LLVMMCParser
+    LLVMObject
+    LLVMOrcJIT
+    LLVMPasses
+    LLVMProfileData
+    LLVMRuntimeDyld
+    LLVMScalarOpts
+    LLVMSelectionDAG
+    LLVMSupport
+    LLVMTarget
+    LLVMTransformUtils
+    LLVMVectorize
+    LLVMX86AsmParser
+    LLVMX86CodeGen
+    LLVMX86Desc
+    LLVMX86Disassembler
+    LLVMX86Info
+    LLVMX86Utils
+  )
+endif()
+
 # Search in the executables dir for this LLVM's clang instance
 find_program(LLVM_CLANG clang ${LLVM_BINARY_DIR} ${LLVM_TOOLS_BINARY_DIR})
 if(NOT LLVM_CLANG)
@@ -152,7 +195,19 @@ target_sources(
 target_include_directories(SvfLLVM PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>)
 
 # Set the library & .so version of the LLVM library
-set_target_properties(SvfLLVM PROPERTIES VERSION ${SVF_VERSION} SOVERSION ${SVF_VERSION_MAJOR})
+if(WIN32)
+  set_target_properties(SvfLLVM PROPERTIES 
+    VERSION ${SVF_VERSION} 
+    SOVERSION ${SVF_VERSION_MAJOR}
+    PREFIX ""
+    SUFFIX ".dll"
+  )
+else()
+  set_target_properties(SvfLLVM PROPERTIES 
+    VERSION ${SVF_VERSION} 
+    SOVERSION ${SVF_VERSION_MAJOR}
+  )
+endif()
 
 # Install the LLVM library's files to the regular/configured install tree
 install(
