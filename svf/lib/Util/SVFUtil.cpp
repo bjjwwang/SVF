@@ -235,12 +235,10 @@ void SVFUtil::increaseStackSize()
 #ifdef _WIN32
     // Windows implementation
     ULONG_PTR low, high;
-    if (GetCurrentThreadStackLimits(&low, &high))
-    {
-        // Windows stack size is set at thread creation time
-        // We can't modify it after the fact
-        writeWrnMsg("Stack size modification not supported on Windows\n");
-    }
+    GetCurrentThreadStackLimits(&low, &high);
+    // Windows stack size is set at thread creation time
+    // We can't modify it after the fact
+    writeWrnMsg("Stack size modification not supported on Windows\n");
 #else
     const rlim_t kStackSize = 256L * 1024L * 1024L;   // min stack size = 256 Mb
     struct rlimit rl;
