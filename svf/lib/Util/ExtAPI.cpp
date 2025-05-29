@@ -34,7 +34,11 @@
 #include <ostream>
 #include <sys/stat.h>
 #include "SVFIR/SVFVariables.h"
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <dlfcn.h>
+#endif
 
 using namespace SVF;
 
@@ -119,17 +123,30 @@ static std::string getFilePath(const std::string& path)
 }
 
 // This function returns the absolute path of the current module:
-// - If SVF is built and loaded as a dynamic library (e.g., libSVFCore.so or .dylib), it returns the path to that shared object file.
+// - If SVF is built and loaded as a dynamic library (e.g., libSVFCore.so or .dll), it returns the path to that shared object file.
 // - If SVF is linked as a static library, it returns the path to the main executable.
 // This is useful for locating resource files (such as extapi.bc) relative to the module at runtime.
 std::string getCurrentSOPath()
 {
+#ifdef _WIN32
+    char path[MAX_PATH] = {0};
+    HMODULE hModule = NULL;
+    if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | 
+                         GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                         (LPCSTR)&getCurrentSOPath, &hModule))
+    {
+        GetModuleFileName(hModule, path, MAX_PATH);
+        return std::string(path);
+    }
+    return "";
+#else
     Dl_info info;
     if (dladdr((void*)&getCurrentSOPath, &info) && info.dli_fname)
     {
         return std::string(info.dli_fname);
     }
     return "";
+#endif
 }
 
 // Get extapi.bc path
