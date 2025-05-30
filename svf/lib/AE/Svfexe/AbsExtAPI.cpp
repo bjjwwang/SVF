@@ -380,6 +380,7 @@ AbstractState& AbsExtAPI::getAbsStateFromTrace(const SVF::ICFGNode* node)
     if (abstractTrace.count(repNode) == 0)
     {
         assert(0 && "No preAbsTrace for this node");
+        abort();
     }
     else
     {

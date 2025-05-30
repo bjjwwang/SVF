@@ -176,7 +176,6 @@ target_link_libraries(SvfLLVM PUBLIC SvfFlags SvfCore PRIVATE ${LLVM_LIBRARIES})
 
 if (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   target_link_options(SvfLLVM PRIVATE "-Wl,--export-all-symbols")
-  target_compile_options(SvfLLVM PRIVATE "-Wno-deprecated-declarations")
 endif()
 
 # Gather & set all of the core library's source files by globbing all .h and .cpp files (recursively)

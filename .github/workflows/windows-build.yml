@@ -8,6 +8,7 @@ env:
   SVF_DIR: $GITHUB_WORKSPACE
   LLVM_URL: "https://github.com/bjjwwang/SVF-LLVM/releases/download/16.0.0/llvm-windows-build.zip"
   Z3_URL: "https://github.com/Z3Prover/z3/releases/download/z3-4.15.0/z3-4.15.0-x64-win.zip"
+  INSTALL_DIR: ${{ github.workspace }}/install
 
 jobs:
   build:
@@ -61,7 +62,16 @@ jobs:
             "-DSVF_USE_PIC=OFF",
             "-DSVF_WARN_AS_ERROR=OFF",
             "-DBUILD_SHARED_LIBS=ON",
-            "-DSVF_ENABLE_RTTI=ON"
+            "-DSVF_ENABLE_RTTI=ON",
+            "-DCMAKE_INSTALL_PREFIX=$env:INSTALL_DIR"
           )
           cmake $cmakeArgs
-          cmake --build . --config Release 
+          cmake --build . --config Release
+          cmake --install .
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: svf-windows
+          path: ${{ env.INSTALL_DIR }}
+          retention-days: 5 

@@ -23,6 +23,11 @@ set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Add compiler flags for Windows GCC
+if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(-Wno-deprecated-declarations)
+endif()
+
 # Ensure all build artifacts end up in <build>/bin, <build>/lib, etc.
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${SVF_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${SVF_BINARY_DIR}/lib)
