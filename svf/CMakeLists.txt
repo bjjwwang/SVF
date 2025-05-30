@@ -7,6 +7,7 @@ target_link_libraries(SvfCore PUBLIC SvfFlags)
 # Add export definitions for Windows
 if(WIN32)
     target_compile_definitions(SvfCore PRIVATE SVF_EXPORT_DYNAMIC=1)
+    target_compile_definitions(SvfCore PUBLIC SVF_EXPORT=1)
 endif()
 
 # Gather & set all of the core library's source files by globbing all .h and .cpp files (recursively)
@@ -30,6 +31,7 @@ if(WIN32)
         SOVERSION ${SVF_VERSION_MAJOR}
         PREFIX ""
         SUFFIX ".dll"
+        WINDOWS_EXPORT_ALL_SYMBOLS ON
     )
 else()
     set_target_properties(SvfCore PROPERTIES 
