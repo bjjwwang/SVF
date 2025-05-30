@@ -12,8 +12,10 @@ endif()
 # Gather & set all of the core library's source files by globbing all .h and .cpp files (recursively)
 file(GLOB_RECURSE SVF_CORE_HEADERS ${CMAKE_CURRENT_LIST_DIR}/include/*.h)
 file(GLOB_RECURSE SVF_CORE_SOURCES
-   "${CMAKE_CURRENT_LIST_DIR}/lib/**/*.cpp"
- )
+  "${CMAKE_CURRENT_LIST_DIR}/lib/*.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/lib/*/*.cpp"
+  "${CMAKE_CURRENT_LIST_DIR}/lib/*/*/*.cpp"
+)
 target_sources(
   SvfCore
   PUBLIC FILE_SET HEADERS
