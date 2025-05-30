@@ -86,12 +86,6 @@ if(WIN32)
     LLVMTarget
     LLVMTransformUtils
     LLVMVectorize
-    LLVMX86AsmParser
-    LLVMX86CodeGen
-    LLVMX86Desc
-    LLVMX86Disassembler
-    LLVMX86Info
-    LLVMX86Utils
   )
 endif()
 
