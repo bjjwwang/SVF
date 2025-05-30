@@ -174,6 +174,11 @@ add_dependencies(SvfLLVM gen_extapi_ir)
 # Link the SVF LLVM library to the core library, the build/link flags, and the LLVM libraries
 target_link_libraries(SvfLLVM PUBLIC SvfFlags SvfCore ${LLVM_LIBRARIES})
 
+# Add export definitions for Windows
+if(WIN32)
+    target_compile_definitions(SvfLLVM PRIVATE SVF_EXPORT_DYNAMIC=1)
+endif()
+
 # Gather & set all of the core library's source files by globbing all .h and .cpp files (recursively)
 file(GLOB_RECURSE SVF_LLVM_HEADERS ${CMAKE_CURRENT_LIST_DIR}/include/*.h)
 file(GLOB_RECURSE SVF_LLVM_SOURCES ${CMAKE_CURRENT_LIST_DIR}/lib/*.cpp)
