@@ -196,7 +196,12 @@ public:
         return sourceLoc;
     }
 
-    const std::string valueOnlyToString() const;
+    using ToStringFunc = std::string(*)(const SVFValue*);
+    static void registerToStringFunc(ToStringFunc impl);
+    std::string valueOnlyToString() const;
+
+private:
+    static ToStringFunc toStringFunc;
 
 
 protected:

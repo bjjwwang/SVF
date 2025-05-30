@@ -731,24 +731,22 @@ bool LLVMUtil::isNonInstricCallSite(const Instruction* inst)
 namespace SVF
 {
 
-
-const std::string SVFValue::valueOnlyToString() const
-{
+static std::string llvmImpl(const SVFValue* val) {
     std::string str;
     llvm::raw_string_ostream rawstr(str);
-    assert(
-        !SVFUtil::isa<GepObjVar>(this) && !SVFUtil::isa<GepValVar>(this) &&
-        !SVFUtil::isa<DummyObjVar>(this) &&!SVFUtil::isa<DummyValVar>(this) &&
-        !SVFUtil::isa<BlackHoleValVar>(this) &&
-        "invalid value, refer to their toString method");
-    auto llvmVal =
-        LLVMModuleSet::getLLVMModuleSet()->getLLVMValue(this);
-    if (llvmVal)
+    if (auto llvmVal = LLVMModuleSet::getLLVMModuleSet()->getLLVMValue(val))
         rawstr << " " << *llvmVal << " ";
-    else
-        rawstr << "";
-    rawstr << getSourceLoc();
+    rawstr << val->getSourceLoc();
     return rawstr.str();
 }
+
+// 构造器触发注册逻辑
+struct RegisterImpl {
+    RegisterImpl() {
+        SVFValue::registerToStringFunc(llvmImpl);
+    }
+};
+
+static RegisterImpl _reg;
 
 } // namespace SVF

@@ -7,13 +7,19 @@
 using namespace SVF;
 using namespace SVFUtil;
 
+SVFValue::ToStringFunc SVFValue::toStringFunc = nullptr;
 
-__attribute__((weak))
-const std::string SVFValue::valueOnlyToString() const
-{
-    assert("SVFBaseNode::valueOnlyToString should be implemented or supported by fronted" && false);
+void SVFValue::registerToStringFunc(ToStringFunc impl) {
+    toStringFunc = impl;
+}
+
+std::string SVFValue::valueOnlyToString() const {
+    if (toStringFunc)
+        return toStringFunc(this);
+    assert(false && "valueOnlyToString not implemented or registered");
     abort();
 }
+
 
 
 /// Add field (index and offset) with its corresponding type
