@@ -4,9 +4,9 @@ add_library(SvfCore)
 # Inherit compiler & linker options by publically linking against the interface library
 target_link_libraries(SvfCore PUBLIC SvfFlags)
 
-
 if (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   target_link_options(SvfCore PRIVATE "-Wl,--export-all-symbols")
+  target_compile_options(SvfCore PRIVATE "-Wno-deprecated-declarations")
 endif()
 
 # Gather & set all of the core library's source files by globbing all .h and .cpp files (recursively)
