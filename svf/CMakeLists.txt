@@ -4,10 +4,6 @@ add_library(SvfCore)
 # Inherit compiler & linker options by publically linking against the interface library
 target_link_libraries(SvfCore PUBLIC SvfFlags)
 
-# Add export definitions for Windows
-if(WIN32)
-    target_compile_definitions(SvfCore PUBLIC SVF_EXPORT=1)
-endif()
 
 if (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   target_link_options(SvfCore PRIVATE "-Wl,--export-all-symbols")
