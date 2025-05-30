@@ -28,11 +28,6 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${SVF_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${SVF_BINARY_DIR}/lib)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${SVF_BINARY_DIR}/lib)
 
-# On Windows, build shared libraries by default
-if(WIN32)
-  set(BUILD_SHARED_LIBS ON CACHE BOOL "Build shared libraries" FORCE)
-endif()
-
 # If SVF is included as a subdirectory (add_subdirectory(SVF)), expose version info to parent scope
 if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   set(SVF_VERSION
