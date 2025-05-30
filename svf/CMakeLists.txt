@@ -9,6 +9,10 @@ if(WIN32)
     target_compile_definitions(SvfCore PUBLIC SVF_EXPORT=1)
 endif()
 
+if (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  target_link_options(SvfCore PRIVATE "-Wl,--export-all-symbols")
+endif()
+
 # Gather & set all of the core library's source files by globbing all .h and .cpp files (recursively)
 file(GLOB_RECURSE SVF_CORE_HEADERS ${CMAKE_CURRENT_LIST_DIR}/include/*.h)
 file(GLOB_RECURSE SVF_CORE_SOURCES
