@@ -445,8 +445,10 @@ public:
     // and overflow.
     friend BoundedInt operator/(const BoundedInt& lhs, const BoundedInt& rhs)
     {
-        if (rhs.is_zero())
+        if (rhs.is_zero()) {
             assert(false && "divide by zero");
+            abort();
+        }
         else if (!lhs.is_infinity() && !rhs.is_infinity())
             return lhs._iVal / rhs._iVal;
         else if (!lhs.is_infinity() && rhs.is_infinity())

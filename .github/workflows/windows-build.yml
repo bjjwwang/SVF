@@ -57,10 +57,7 @@ jobs:
             "-DCMAKE_BUILD_TYPE=Release",
             "-DLLVM_DIR=$env:LLVM_DIR",
             "-DZ3_DIR=$env:Z3_DIR",
-            "-DSVF_CTIR=ON",
-            "-DSVF_Z3=ON",
-            "-DSVF_USE_PIC=OFF",
-            "-DSVF_WARN_AS_ERROR=OFF",
+            "-DSVF_USE_PIC=ON",
             "-DBUILD_SHARED_LIBS=ON",
             "-DSVF_ENABLE_RTTI=ON",
             "-DCMAKE_INSTALL_PREFIX=$env:INSTALL_DIR"
