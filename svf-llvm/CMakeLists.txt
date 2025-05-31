@@ -192,20 +192,10 @@ target_sources(
 # Only expose the headers in the source tree to in-tree users of SVF
 target_include_directories(SvfLLVM PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>)
 
-# Set the library & .so version of the LLVM library
-if(WIN32)
-  set_target_properties(SvfLLVM PROPERTIES 
-    VERSION ${SVF_VERSION} 
-    SOVERSION ${SVF_VERSION_MAJOR}
-    PREFIX ""
-    SUFFIX ".dll"
-  )
-else()
-  set_target_properties(SvfLLVM PROPERTIES 
-    VERSION ${SVF_VERSION} 
-    SOVERSION ${SVF_VERSION_MAJOR}
-  )
-endif()
+set_target_properties(SvfLLVM PROPERTIES 
+  VERSION ${SVF_VERSION} 
+  SOVERSION ${SVF_VERSION_MAJOR}
+)
 
 # Install the LLVM library's files to the regular/configured install tree
 install(
