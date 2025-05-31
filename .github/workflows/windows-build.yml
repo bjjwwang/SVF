@@ -79,6 +79,11 @@ jobs:
           $env:TEST_FILE = "$env:GITHUB_WORKSPACE\SVF-windows-CI\CWE121_Stack_Based_Buffer_Overflow__CWE131_memcpy_01.c.bc"
           echo "TEST_FILE=$env:TEST_FILE" >> $env:GITHUB_ENV
 
+      - name: Set AE_EXE environment variable
+        run: |
+          $env:AE_EXE = "$env:INSTALL_DIR\bin\ae.exe"
+          echo "AE_EXE=$env:AE_EXE" >> $env:GITHUB_ENV
+
       - name: Verify AE executable and test file
         run: |
           if (Test-Path $env:AE_EXE) {
