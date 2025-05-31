@@ -42,15 +42,18 @@ jobs:
         run: |
           mkdir build
           cd build
-          cmake .. `
-            -G "Ninja" `
-            -DCMAKE_BUILD_TYPE=Debug `
-            -DLLVM_DIR=$env:LLVM_DIR `
-            -DZ3_DIR=$env:Z3_DIR `
-            -DSVF_USE_PIC=ON `
-            -DBUILD_SHARED_LIBS=ON `
-            -DSVF_ENABLE_RTTI=ON `
-            -DCMAKE_INSTALL_PREFIX=$env:INSTALL_DIR
+          $cmakeArgs = @(
+            "..",
+            "-G", "Ninja",
+            "-DCMAKE_BUILD_TYPE=Debug",
+            "-DLLVM_DIR=$env:LLVM_DIR",
+            "-DZ3_DIR=$env:Z3_DIR",
+            "-DSVF_USE_PIC=ON",
+            "-DBUILD_SHARED_LIBS=ON",
+            "-DSVF_ENABLE_RTTI=ON",
+            "-DCMAKE_INSTALL_PREFIX=$env:INSTALL_DIR"
+          )
+          cmake $cmakeArgs
           cmake --build . --config Debug
           cmake --install .
 
