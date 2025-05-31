@@ -102,8 +102,15 @@ jobs:
 
       - name: Run AE test
         run: |
-          Write-Host "Running AE test with file: $env:TEST_FILE"
-          & $env:AE_EXE -overflow $env:TEST_FILE
+          Write-Host "Testing AE executable with --help:"
+          $helpOutput = & $env:AE_EXE --help 2>&1
+          Write-Host "Help output:"
+          Write-Host $helpOutput
+          
+          Write-Host "`nRunning AE test with file: $env:TEST_FILE"
+          $testOutput = & $env:AE_EXE -overflow $env:TEST_FILE 2>&1
+          Write-Host "Test output:"
+          Write-Host $testOutput
 
 
 
