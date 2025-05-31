@@ -49,7 +49,7 @@ jobs:
             "-DLLVM_DIR=$env:LLVM_DIR",
             "-DZ3_DIR=$env:Z3_DIR",
             "-DSVF_USE_PIC=ON",
-            "-DBUILD_SHARED_LIBS=ON",
+            "-DBUILD_SHARED_LIBS=OFF",
             "-DSVF_ENABLE_RTTI=ON",
             "-DCMAKE_INSTALL_PREFIX=$env:INSTALL_DIR"
           )
