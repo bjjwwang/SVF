@@ -54,7 +54,7 @@ jobs:
           $cmakeArgs = @(
             "..",
             "-G", "Ninja",
-            "-DCMAKE_BUILD_TYPE=Release",
+            "-DCMAKE_BUILD_TYPE=Debug",
             "-DLLVM_DIR=$env:LLVM_DIR",
             "-DZ3_DIR=$env:Z3_DIR",
             "-DSVF_USE_PIC=ON",
@@ -63,7 +63,7 @@ jobs:
             "-DCMAKE_INSTALL_PREFIX=$env:INSTALL_DIR"
           )
           cmake $cmakeArgs
-          cmake --build . --config Release
+          cmake --build . --config Debug
           cmake --install .
 
       - name: Clone SVF-windows-CI
