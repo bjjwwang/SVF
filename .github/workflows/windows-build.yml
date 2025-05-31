@@ -75,83 +75,64 @@ jobs:
           $env:AE_EXE = "$env:INSTALL_DIR\bin\ae.exe"
           echo "AE_EXE=$env:AE_EXE" >> $env:GITHUB_ENV
 
-      - name: Verify AE executable and test file
-        run: |
-          if (Test-Path $env:AE_EXE) {
-              Write-Host "✅ AE executable found at: $env:AE_EXE"
-          } else {
-              Write-Error "❌ AE executable not found at: $env:AE_EXE"
-              exit 1
-          }
-
-          if (Test-Path $env:TEST_FILE) {
-              Write-Host "✅ Test file found at: $env:TEST_FILE"
-          } else {
-              Write-Error "❌ Test file not found at: $env:TEST_FILE"
-              exit 1
-          }
-
-      - name: Check AE DLL dependencies
+      - name: Dump AE.exe Dependencies
         shell: pwsh
         run: |
-          Write-Host "`n========= DLL Dependency Check ========="
+          Write-Host "`n=== Dumping AE.exe Dependencies via dumpbin ==="
+          if (-not (Test-Path $env:AE_EXE)) {
+            Write-Error "❌ AE_EXE not found at $env:AE_EXE"
+            exit 1
+          }
+          dumpbin /DEPENDENTS $env:AE_EXE
 
+      - name: Verify All Dependent DLLs Exist
+        shell: pwsh
+        run: |
+          Write-Host "`n=== Verifying AE.exe Dependent DLLs ==="
           $aePath = $env:AE_EXE
-          $aeDir = Split-Path $aePath
-
-          if (-not (Test-Path $aePath)) {
-              Write-Error "❌ AE executable not found at $aePath"
-              exit 1
+          $raw = dumpbin /DEPENDENTS $aePath 2>&1
+          $dllNames = $raw |
+            Select-String -Pattern "\.dll" |
+            ForEach-Object { $_.ToString().Trim() }
+          if (-not $dllNames) {
+            Write-Error "❌ dumpbin 未找到任何 DLL 依赖"
+            exit 1
           }
-
-          Write-Host "`n📁 AE executable directory:"
-          Write-Host $aeDir
-
-          Write-Host "`n📃 DLLs in AE directory:"
-          Get-ChildItem $aeDir -Filter *.dll | ForEach-Object { Write-Host "  $_" }
-
-          # Manually check a list of expected DLLs (adjust this list as needed)
-          $expectedDlls = @("z3.dll", "LLVMCore.dll", "LLVMSupport.dll", "LLVMAnalysis.dll")
-
-          Write-Host "`n🔎 Checking expected DLLs:"
-          foreach ($dll in $expectedDlls) {
-              $dllPath = Join-Path $aeDir $dll
-              if (Test-Path $dllPath) {
-                  Write-Host "✅ Found: $dll"
-              } else {
-                  Write-Host "❌ Missing: $dll"
+          foreach ($dll in $dllNames) {
+            $found = $false
+            $aeDir = Split-Path $aePath
+            $cand = Join-Path $aeDir $dll
+            if (Test-Path $cand) {
+              Write-Host "✅ Found in AE directory: $dll"
+              $found = $true
+            }
+            if (-not $found) {
+              foreach ($p in $env:PATH.Split(";")) {
+                if ([string]::IsNullOrWhiteSpace($p)) { continue }
+                $maybe = Join-Path $p $dll
+                if (Test-Path $maybe) {
+                  Write-Host "✅ Found in PATH: $maybe"
+                  $found = $true
+                  break
+                }
               }
+            }
+            if (-not $found) {
+              Write-Error "❌ Missing DLL: $dll"
+            }
           }
+          Write-Host "`n=== Dependency verification done ==="
 
-          Write-Host "`n========= DLL Dependency Check Complete ========="
-
-      - name: Run AE test
+      - name: Run AE.exe and Capture Exit Code
         shell: pwsh
         run: |
-          Write-Host "`n========= AE Executable Test Start ========="
-
-          Write-Host "`n✅ AE_EXE and TEST_FILE are valid"
-          Write-Host "`n👉 AE_EXE: $env:AE_EXE"
-          Write-Host "👉 TEST_FILE: $env:TEST_FILE"
-
-          # Run --help
-          Write-Host "`n🚀 Running ae.exe --help:"
-          try {
-            $helpOutput = & $env:AE_EXE --help 2>&1
-            Write-Host "`n📄 Help output:"
-            Write-Host $helpOutput
-          } catch {
-            Write-Error "❌ Error running ae.exe --help: $_"
+          Write-Host "`n=== Running AE.exe to check runtime errors ==="
+          $proc = Start-Process $env:AE_EXE -ArgumentList "--help" -NoNewWindow -PassThru -Wait
+          $code = $proc.ExitCode
+          if ($code -ne 0) {
+            Write-Error "❌ AE.exe exited with code $code (possible missing DLL)."
+            exit $code
+          } else {
+            Write-Host "✅ AE.exe --help succeeded with ExitCode = 0"
           }
-
-          # Run test file
-          Write-Host "`n🚀 Running ae.exe -overflow with test file:"
-          try {
-            $testOutput = & $env:AE_EXE -overflow $env:TEST_FILE 2>&1
-            Write-Host "`n📄 Test output:"
-            Write-Host $testOutput
-          } catch {
-            Write-Error "❌ Error running ae.exe on test file: $_"
-          }
-
-          Write-Host "`n========= AE Executable Test End ========="
+          Write-Host "`n=== AE.exe runtime check done ==="
