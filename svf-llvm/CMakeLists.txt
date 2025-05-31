@@ -176,6 +176,8 @@ target_link_libraries(SvfLLVM PUBLIC SvfFlags SvfCore PRIVATE ${LLVM_LIBRARIES})
 
 if (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   target_link_options(SvfLLVM PRIVATE "-Wl,--export-all-symbols")
+    # for windows release build, we need to define _DEBUG to keep assert(), otherwise it will be optimized away
+  target_compile_definitions(SvfLLVM PRIVATE -D_DEBUG)
 endif()
 
 # Gather & set all of the core library's source files by globbing all .h and .cpp files (recursively)
