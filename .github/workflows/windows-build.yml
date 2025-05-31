@@ -101,16 +101,54 @@ jobs:
           }
 
       - name: Run AE test
+        shell: pwsh
         run: |
-          Write-Host "Testing AE executable with --help:"
-          $helpOutput = & $env:AE_EXE --help 2>&1
-          Write-Host "Help output:"
-          Write-Host $helpOutput
-          
-          Write-Host "`nRunning AE test with file: $env:TEST_FILE"
-          $testOutput = & $env:AE_EXE -overflow $env:TEST_FILE 2>&1
-          Write-Host "Test output:"
-          Write-Host $testOutput
+          Write-Host "`n========= AE Executable Test Start ========="
+
+          # Check env vars
+          if (-not $env:AE_EXE) {
+            Write-Error "❌ AE_EXE environment variable is not set!"
+            exit 1
+          }
+          if (-not (Test-Path $env:AE_EXE)) {
+            Write-Error "❌ AE_EXE path does not exist: $env:AE_EXE"
+            exit 1
+          }
+
+          if (-not $env:TEST_FILE) {
+            Write-Error "❌ TEST_FILE environment variable is not set!"
+            exit 1
+          }
+          if (-not (Test-Path $env:TEST_FILE)) {
+            Write-Error "❌ TEST_FILE does not exist: $env:TEST_FILE"
+            exit 1
+          }
+
+          Write-Host "`n✅ AE_EXE and TEST_FILE are valid"
+          Write-Host "`n👉 AE_EXE: $env:AE_EXE"
+          Write-Host "👉 TEST_FILE: $env:TEST_FILE"
+
+          # Run --help
+          Write-Host "`n🚀 Running ae.exe --help:"
+          try {
+            $helpOutput = & $env:AE_EXE --help 2>&1
+            Write-Host "`n📄 Help output:"
+            Write-Host $helpOutput
+          } catch {
+            Write-Error "❌ Error running ae.exe --help: $_"
+          }
+
+          # Run test file
+          Write-Host "`n🚀 Running ae.exe -overflow with test file:"
+          try {
+            $testOutput = & $env:AE_EXE -overflow $env:TEST_FILE 2>&1
+            Write-Host "`n📄 Test output:"
+            Write-Host $testOutput
+          } catch {
+            Write-Error "❌ Error running ae.exe on test file: $_"
+          }
+
+          Write-Host "`n========= AE Executable Test End ========="
 
 
 
