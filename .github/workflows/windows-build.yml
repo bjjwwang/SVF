@@ -66,21 +66,39 @@ jobs:
           cmake --build . --config Debug
           cmake --install .
 
-      - name: Clone SVF-windows-CI
-        run: |
-          git clone https://github.com/bjjwwang/SVF-windows-CI.git
-          $env:TEST_FILE = "$env:GITHUB_WORKSPACE\SVF-windows-CI\CWE121_Stack_Based_Buffer_Overflow__CWE131_memcpy_01.c.bc"
-          echo "TEST_FILE=$env:TEST_FILE" >> $env:GITHUB_ENV
-
-      - name: Run AE test
-        run: |
-          $env:AE_EXE = "$env:INSTALL_DIR\bin\ae.exe"
-          Write-Host "Running AE test with file: $env:TEST_FILE"
-          & $env:AE_EXE -overflow $env:TEST_FILE
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: svf-windows
           path: ${{ env.INSTALL_DIR }}
           retention-days: 5 
+
+      - name: Clone SVF-windows-CI
+        run: |
+          git clone https://github.com/bjjwwang/SVF-windows-CI.git
+          $env:TEST_FILE = "$env:GITHUB_WORKSPACE\SVF-windows-CI\CWE121_Stack_Based_Buffer_Overflow__CWE131_memcpy_01.c.bc"
+          echo "TEST_FILE=$env:TEST_FILE" >> $env:GITHUB_ENV
+
+      - name: Verify AE executable and test file
+        run: |
+          if (Test-Path $env:AE_EXE) {
+              Write-Host "AE executable found at: $env:AE_EXE"
+          } else {
+              Write-Host "AE executable not found at: $env:AE_EXE"
+              exit 1
+          }
+
+          if (Test-Path $env:TEST_FILE) {
+              Write-Host "Test file found at: $env:TEST_FILE"
+          } else {
+              Write-Host "Test file not found at: $env:TEST_FILE"
+              exit 1
+          }
+
+      - name: Run AE test
+        run: |
+          Write-Host "Running AE test with file: $env:TEST_FILE"
+          & $env:AE_EXE -overflow $env:TEST_FILE
+
+
+
