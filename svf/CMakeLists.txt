@@ -9,6 +9,8 @@ if (WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   target_compile_options(SvfCore PRIVATE "-Wno-deprecated-declarations")
   # for windows release build, we need to define _DEBUG to keep assert(), otherwise it will be optimized away
   target_compile_definitions(SvfCore PRIVATE -D_DEBUG)
+  # Reduce optimization level to prevent aggressive optimization
+  target_compile_options(SvfCore PRIVATE "-O1")
 endif()
 
 # Gather & set all of the core library's source files by globbing all .h and .cpp files (recursively)
