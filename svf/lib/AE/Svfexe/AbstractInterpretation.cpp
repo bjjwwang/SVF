@@ -747,9 +747,12 @@ bool AbstractInterpretation::handleICFGNode(const ICFGNode* node)
         detector->detect(getAbsStateFromTrace(node), node);
     stat->countStateSize();
 
+<<<<<<< HEAD
     // Track this node as analyzed (for coverage statistics across all entry points)
     allAnalyzedNodes.insert(node);
 
+=======
+>>>>>>> root/master
     // Check if state changed (for fixpoint detection)
     // For entry nodes on first visit, always return true to process successors
     if (isFunEntry && !hadPrevState)
