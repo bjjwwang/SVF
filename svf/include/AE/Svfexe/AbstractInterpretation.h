@@ -189,12 +189,14 @@ private:
     virtual void handleGlobalNode();
 
     /**
-     * Check if execution state exist by merging states of predecessor nodes
+     * Propagate the post-state of a node to all its intra-procedural successors.
+     * For conditional branches, the state is refined along each edge via isBranchFeasible.
+     * The refined state is joined into the successor's abstractTrace entry.
      *
-     * @param icfgNode The icfg node to analyse
-     * @return if this node has preceding execution state
+     * @param node The node whose post-state should be propagated
      */
-    bool mergeStatesFromPredecessors(const ICFGNode * icfgNode);
+    void propagateToSuccessor(const ICFGNode* node,
+                              const Set<const ICFGNode*>* withinSet = nullptr);
 
     /**
      * Check if execution state exist at the branch edge
@@ -203,13 +205,6 @@ private:
      * @return if this edge is feasible
      */
     bool isBranchFeasible(const IntraCFGEdge* intraEdge, AbstractState& as);
-
-    /**
-     * handle instructions in ICFGSingletonWTO
-     *
-     * @param block basic block that has one instruction or a series of instructions
-     */
-    virtual void handleSingletonWTO(const ICFGSingletonWTO *icfgSingletonWto);
 
     /**
      * handle call node in ICFGNode
@@ -233,28 +228,13 @@ private:
     void handleFunction(const ICFGNode* funEntry, const CallICFGNode* caller = nullptr);
 
     /**
-     * Handle an ICFG node by merging states and processing statements
+     * Handle an ICFG node: execute statements and propagate post-state to successors.
+     * The node's pre-state must already be in abstractTrace (propagated by predecessors).
      *
      * @param node The ICFG node to handle
-     * @return true if state changed, false if fixpoint reached or infeasible
+     * @return true if state changed, false if fixpoint reached or unreachable
      */
     bool handleICFGNode(const ICFGNode* node);
-
-    /**
-     * Get the next nodes of a node within the same function
-     *
-     * @param node The node to get successors for
-     * @return Vector of successor nodes
-     */
-    std::vector<const ICFGNode*> getNextNodes(const ICFGNode* node) const;
-
-    /**
-     * Get the next nodes outside a cycle
-     *
-     * @param cycle The cycle to get exit successors for
-     * @return Vector of successor nodes outside the cycle
-     */
-    std::vector<const ICFGNode*> getNextNodesOfCycle(const ICFGCycleWTO* cycle) const;
 
     /**
      * handle SVF Statement like CmpStmt, CallStmt, GepStmt, LoadStmt, StoreStmt, etc.
@@ -350,7 +330,7 @@ private:
     // there data should be shared with subclasses
     Map<std::string, std::function<void(const CallICFGNode*)>> func_map;
 
-    Map<const ICFGNode*, AbstractState> abstractTrace; // abstract states immediately after nodes
+    Map<const ICFGNode*, AbstractState> abstractTrace; // abstract states for nodes (pre-state before execution, post-state after)
     Set<const ICFGNode*> allAnalyzedNodes; // All nodes ever analyzed (across all entry points)
     std::string moduleName;
 
