@@ -195,13 +195,11 @@ public:
         if (Options::SemiSparse())
         {
             const SVFVar* var = svfir->getGNode(varId);
-            if (const ValVar* vv = SVFUtil::dyn_cast<ValVar>(var))
+            if (SVFUtil::isa<ValVar>(var))
             {
-                const ICFGNode* defSite = vv->getICFGNode();
-                if (!defSite)
-                    defSite = icfg->getGlobalICFGNode();
-                if (abstractTrace.count(defSite))
-                    return abstractTrace[defSite][varId];
+                auto it = globalState.getVarToVal().find(varId);
+                if (it != globalState.getVarToVal().end())
+                    return it->second;
                 return AbstractValue();
             }
         }
@@ -318,8 +316,11 @@ private:
 
     void updateStateOnPhi(const PhiStmt *phi);
 
-    /// Semi-sparse: pull needed ValVars from their def-sites into abstractTrace[node]
+    /// Semi-sparse: pull needed ValVars from globalState into abstractTrace[node]
     void buildSparseState(const ICFGNode* node);
+
+    /// Semi-sparse: flush ValVars from abstractTrace[node] back to globalState
+    void flushToGlobalState(const ICFGNode* node);
 
     /// Semi-sparse: collect RHS ValVars needed by statements at this node
     void collectNeededVars(const ICFGNode* node, Set<const ValVar*>& neededValVars);
@@ -364,6 +365,7 @@ private:
     Map<std::string, std::function<void(const CallICFGNode*)>> func_map;
 
     Map<const ICFGNode*, AbstractState> abstractTrace; // abstract states immediately after nodes
+    AbstractState globalState; // semi-sparse: flow-insensitive ValVar storage
     std::string moduleName;
 
     std::vector<std::unique_ptr<AEDetector>> detectors;

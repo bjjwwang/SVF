@@ -170,6 +170,9 @@ void AbstractInterpretation::handleGlobalNode()
     {
         handleSVFStatement(stmt);
     }
+    // Semi-sparse: flush globalNode vars (dummy params/consts) to globalState
+    if (Options::SemiSparse())
+        flushToGlobalState(node);
 }
 
 /// get execution state by merging states of predecessor blocks
@@ -190,16 +193,35 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode * icfgNo
                 AbstractState tmpEs = abstractTrace[edge->getSrcNode()];
                 if (intraCfgEdge->getCondition())
                 {
+                    // Semi-sparse: supplement ValVars from globalState for branch check
+                    if (Options::SemiSparse())
+                    {
+                        for (auto& pair : globalState.getVarToVal())
+                            tmpEs[pair.first] = pair.second;
+                    }
                     if (isBranchFeasible(intraCfgEdge, tmpEs))
                     {
-                        // Semi-sparse: clear ValVars after branch feasibility check
                         if (Options::SemiSparse())
+                        {
+                            // Selective clear: keep only branch-refined ValVars
+                            // (those that differ from globalState after isBranchFeasible)
+                            Map<NodeID, AbstractValue> refinedVars;
+                            for (auto& pair : tmpEs.getVarToVal())
+                            {
+                                auto git = globalState.getVarToVal().find(pair.first);
+                                if (git != globalState.getVarToVal().end() &&
+                                    !pair.second.equals(git->second))
+                                {
+                                    // Differs from globalState = refined by branch, keep
+                                    refinedVars[pair.first] = pair.second;
+                                }
+                            }
                             tmpEs.clearVarMap();
+                            // Restore only the refined ValVars
+                            for (auto& pair : refinedVars)
+                                tmpEs[pair.first] = pair.second;
+                        }
                         workList.push_back(tmpEs);
-                    }
-                    else
-                    {
-                        // do nothing
                     }
                 }
                 else
@@ -216,7 +238,25 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode * icfgNo
                 // context insensitive implementation
                 AbstractState tmpEs = abstractTrace[callCfgEdge->getSrcNode()];
                 if (Options::SemiSparse())
+                {
+                    // Keep only CallPE-defined formal params so they are
+                    // correctly joined across multiple call sites
+                    Map<NodeID, AbstractValue> formalParams;
+                    const ICFGNode* srcNode = callCfgEdge->getSrcNode();
+                    for (const SVFStmt* stmt : srcNode->getSVFStmts())
+                    {
+                        if (const CallPE* callPE = SVFUtil::dyn_cast<CallPE>(stmt))
+                        {
+                            NodeID lhs = callPE->getLHSVarID();
+                            auto it = tmpEs.getVarToVal().find(lhs);
+                            if (it != tmpEs.getVarToVal().end())
+                                formalParams[lhs] = it->second;
+                        }
+                    }
                     tmpEs.clearVarMap();
+                    for (auto& pair : formalParams)
+                        tmpEs[pair.first] = pair.second;
+                }
                 workList.push_back(tmpEs);
             }
             else if (const RetCFGEdge *retCfgEdge =
@@ -271,25 +311,43 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode * icfgNo
 
 void AbstractInterpretation::buildSparseState(const ICFGNode* node)
 {
+    AbstractState& as = abstractTrace[node];
+
+    // For ExtAPI call nodes, pull ALL ValVars from globalState
+    // because ExtAPI handlers may access arbitrary ValVars via indirect lookups
+    if (const CallICFGNode* callNode = SVFUtil::dyn_cast<CallICFGNode>(node))
+    {
+        if (SVFUtil::isExtCall(callNode->getCalledFunction()))
+        {
+            for (auto& pair : globalState.getVarToVal())
+            {
+                if (as.getVarToVal().find(pair.first) == as.getVarToVal().end())
+                    as[pair.first] = pair.second;
+            }
+            return;
+        }
+    }
+
     Set<const ValVar*> neededValVars;
     collectNeededVars(node, neededValVars);
-
-    AbstractState& as = abstractTrace[node];
-    const ICFGNode* globalNode = icfg->getGlobalICFGNode();
 
     for (const ValVar* var : neededValVars)
     {
         NodeID id = var->getId();
-        const ICFGNode* defSite = var->getICFGNode();
-        if (!defSite)
-            defSite = globalNode;  // ConstIntValVar/ConstFPValVar with no ICFGNode
-        auto traceIt = abstractTrace.find(defSite);
-        if (traceIt == abstractTrace.end())
-            continue;  // def-site unreachable
-        auto valIt = traceIt->second.getVarToVal().find(id);
-        if (valIt != traceIt->second.getVarToVal().end())
-            as[id] = valIt->second;
+        // Don't overwrite ValVars already present (from branch refinement)
+        if (as.getVarToVal().find(id) != as.getVarToVal().end())
+            continue;
+        auto it = globalState.getVarToVal().find(id);
+        if (it != globalState.getVarToVal().end())
+            as[id] = it->second;
     }
+}
+
+void AbstractInterpretation::flushToGlobalState(const ICFGNode* node)
+{
+    AbstractState& as = abstractTrace[node];
+    for (auto& pair : as.getVarToVal())
+        globalState[pair.first] = pair.second;
 }
 
 void AbstractInterpretation::collectNeededVars(const ICFGNode* node, Set<const ValVar*>& neededValVars)
@@ -371,12 +429,18 @@ void AbstractInterpretation::collectNeededVars(const ICFGNode* node, Set<const V
     }
 
     // For CallICFGNode, also collect actual arguments (for ExtAPI handlers)
+    // and indirect call function pointer (for indirectCallFunPass)
     if (const CallICFGNode* callNode = SVFUtil::dyn_cast<CallICFGNode>(node))
     {
         for (u32_t i = 0; i < callNode->getNumArgOperands(); i++)
         {
             addIfValVar(callNode->getArgument(i)->getId());
         }
+        // Indirect call: collect the function pointer variable
+        const auto& callsiteMaps = svfir->getIndirectCallsites();
+        auto it = callsiteMaps.find(callNode);
+        if (it != callsiteMaps.end())
+            addIfValVar(it->second);
     }
 }
 
@@ -703,10 +767,19 @@ void AbstractInterpretation::handleSingletonWTO(const ICFGSingletonWTO *icfgSing
             detector->checkStatement(stmt, getAbsStateFromTrace(node));
     }
 
+    // Semi-sparse: flush globalNode vars (dummy params, return vars) BEFORE
+    // handleCallSite so callee can read formal params from globalState
+    if (Options::SemiSparse())
+        flushToGlobalState(node);
+
     // Handle call sites (inlining the callee)
     if (const CallICFGNode* callnode = SVFUtil::dyn_cast<CallICFGNode>(node))
     {
         handleCallSite(callnode);
+
+        // Semi-sparse: flush again after callee/extAPI processing
+        if (Options::SemiSparse())
+            flushToGlobalState(node);
 
         // Check stub functions (e.g., SAFE_BUFACCESS, UNSAFE_BUFACCESS)
         for (auto& detector : detectors)
@@ -946,6 +1019,8 @@ void AbstractInterpretation::handleCycleWTO(const ICFGCycleWTO*cycle)
 
                 // Widening
                 abstractTrace[cycle_head] = prev_head_state.widening(cur_head_state);
+                if (Options::SemiSparse())
+                    flushToGlobalState(cycle_head);
 
                 if (abstractTrace[cycle_head] == prev_head_state)
                 {
@@ -968,6 +1043,8 @@ void AbstractInterpretation::handleCycleWTO(const ICFGCycleWTO*cycle)
                     {
                         // Widening's fixpoint reached in the widening phase, switch to narrowing
                         abstractTrace[cycle_head] = prev_head_state.narrowing(cur_head_state);
+                        if (Options::SemiSparse())
+                            flushToGlobalState(cycle_head);
                         if (abstractTrace[cycle_head] == prev_head_state)
                         {
                             // Narrowing's fixpoint reached in the narrowing phase, exit loop
@@ -986,6 +1063,8 @@ void AbstractInterpretation::handleCycleWTO(const ICFGCycleWTO*cycle)
                 {
                     // Widening's fixpoint reached in the widening phase, switch to narrowing
                     abstractTrace[cycle_head] = prev_head_state.narrowing(cur_head_state);
+                    if (Options::SemiSparse())
+                        flushToGlobalState(cycle_head);
                     if (abstractTrace[cycle_head] == prev_head_state)
                     {
                         // Narrowing's fixpoint reached in the narrowing phase, exit loop
