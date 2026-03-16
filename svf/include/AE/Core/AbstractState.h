@@ -417,6 +417,9 @@ public:
         _freedAddrs.clear();
     }
 
+    /// Clear the top-level variable map (semi-sparse: only keep ObjVar/Loc in merged state)
+    inline void clearVarMap() { _varToAbsVal.clear(); }
+
 };
 
 }

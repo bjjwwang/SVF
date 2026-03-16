@@ -192,6 +192,9 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode * icfgNo
                 {
                     if (isBranchFeasible(intraCfgEdge, tmpEs))
                     {
+                        // Semi-sparse: clear ValVars after branch feasibility check
+                        if (Options::SemiSparse())
+                            tmpEs.clearVarMap();
                         workList.push_back(tmpEs);
                     }
                     else
@@ -201,6 +204,8 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode * icfgNo
                 }
                 else
                 {
+                    if (Options::SemiSparse())
+                        tmpEs.clearVarMap();
                     workList.push_back(tmpEs);
                 }
             }
@@ -209,8 +214,10 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode * icfgNo
             {
 
                 // context insensitive implementation
-                workList.push_back(
-                    abstractTrace[callCfgEdge->getSrcNode()]);
+                AbstractState tmpEs = abstractTrace[callCfgEdge->getSrcNode()];
+                if (Options::SemiSparse())
+                    tmpEs.clearVarMap();
+                workList.push_back(tmpEs);
             }
             else if (const RetCFGEdge *retCfgEdge =
                          SVFUtil::dyn_cast<RetCFGEdge>(edge))
@@ -219,7 +226,10 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode * icfgNo
                 {
                 case TOP:
                 {
-                    workList.push_back(abstractTrace[retCfgEdge->getSrcNode()]);
+                    AbstractState tmpEs = abstractTrace[retCfgEdge->getSrcNode()];
+                    if (Options::SemiSparse())
+                        tmpEs.clearVarMap();
+                    workList.push_back(tmpEs);
                     break;
                 }
                 case WIDEN_ONLY:
@@ -228,7 +238,12 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode * icfgNo
                     const RetICFGNode* returnSite = SVFUtil::dyn_cast<RetICFGNode>(icfgNode);
                     const CallICFGNode* callSite = returnSite->getCallICFGNode();
                     if (hasAbsStateFromTrace(callSite))
-                        workList.push_back(abstractTrace[retCfgEdge->getSrcNode()]);
+                    {
+                        AbstractState tmpEs = abstractTrace[retCfgEdge->getSrcNode()];
+                        if (Options::SemiSparse())
+                            tmpEs.clearVarMap();
+                        workList.push_back(tmpEs);
+                    }
                 }
                 }
             }
@@ -251,6 +266,117 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode * icfgNo
         // update post as
         abstractTrace[icfgNode] = preAs;
         return true;
+    }
+}
+
+void AbstractInterpretation::buildSparseState(const ICFGNode* node)
+{
+    Set<const ValVar*> neededValVars;
+    collectNeededVars(node, neededValVars);
+
+    AbstractState& as = abstractTrace[node];
+    const ICFGNode* globalNode = icfg->getGlobalICFGNode();
+
+    for (const ValVar* var : neededValVars)
+    {
+        NodeID id = var->getId();
+        const ICFGNode* defSite = var->getICFGNode();
+        if (!defSite)
+            defSite = globalNode;  // ConstIntValVar/ConstFPValVar with no ICFGNode
+        auto traceIt = abstractTrace.find(defSite);
+        if (traceIt == abstractTrace.end())
+            continue;  // def-site unreachable
+        auto valIt = traceIt->second.getVarToVal().find(id);
+        if (valIt != traceIt->second.getVarToVal().end())
+            as[id] = valIt->second;
+    }
+}
+
+void AbstractInterpretation::collectNeededVars(const ICFGNode* node, Set<const ValVar*>& neededValVars)
+{
+    auto addIfValVar = [&](NodeID id)
+    {
+        const SVFVar* var = svfir->getGNode(id);
+        if (const ValVar* vv = SVFUtil::dyn_cast<ValVar>(var))
+            neededValVars.insert(vv);
+    };
+
+    for (const SVFStmt* stmt : node->getSVFStmts())
+    {
+        if (const LoadStmt* load = SVFUtil::dyn_cast<LoadStmt>(stmt))
+        {
+            addIfValVar(load->getRHSVarID());
+        }
+        else if (const StoreStmt* store = SVFUtil::dyn_cast<StoreStmt>(stmt))
+        {
+            addIfValVar(store->getRHSVarID());
+            addIfValVar(store->getLHSVarID());
+        }
+        else if (const CopyStmt* copy = SVFUtil::dyn_cast<CopyStmt>(stmt))
+        {
+            addIfValVar(copy->getRHSVarID());
+        }
+        else if (const BinaryOPStmt* binary = SVFUtil::dyn_cast<BinaryOPStmt>(stmt))
+        {
+            addIfValVar(binary->getOpVarID(0));
+            addIfValVar(binary->getOpVarID(1));
+        }
+        else if (const CmpStmt* cmp = SVFUtil::dyn_cast<CmpStmt>(stmt))
+        {
+            addIfValVar(cmp->getOpVarID(0));
+            addIfValVar(cmp->getOpVarID(1));
+        }
+        else if (const GepStmt* gep = SVFUtil::dyn_cast<GepStmt>(stmt))
+        {
+            addIfValVar(gep->getRHSVarID());
+            for (const auto& offsetPair : gep->getOffsetVarAndGepTypePairVec())
+            {
+                addIfValVar(offsetPair.first->getId());
+            }
+        }
+        else if (const SelectStmt* select = SVFUtil::dyn_cast<SelectStmt>(stmt))
+        {
+            addIfValVar(select->getTrueValue()->getId());
+            addIfValVar(select->getFalseValue()->getId());
+            addIfValVar(select->getCondition()->getId());
+        }
+        else if (const CallPE* callPE = SVFUtil::dyn_cast<CallPE>(stmt))
+        {
+            addIfValVar(callPE->getRHSVarID());
+        }
+        else if (const RetPE* retPE = SVFUtil::dyn_cast<RetPE>(stmt))
+        {
+            addIfValVar(retPE->getRHSVarID());
+        }
+        else if (const BranchStmt* branch = SVFUtil::dyn_cast<BranchStmt>(stmt))
+        {
+            if (branch->isConditional())
+            {
+                const SVFVar* condVar = branch->getCondition();
+                addIfValVar(condVar->getId());
+                // Also collect CmpStmt operands needed by isCmpBranchFeasible
+                if (!condVar->getInEdges().empty())
+                {
+                    SVFStmt* condInStmt = *condVar->getInEdges().begin();
+                    if (const CmpStmt* cmpStmt = SVFUtil::dyn_cast<CmpStmt>(condInStmt))
+                    {
+                        addIfValVar(cmpStmt->getOpVarID(0));
+                        addIfValVar(cmpStmt->getOpVarID(1));
+                    }
+                }
+            }
+        }
+        // PhiStmt: operands are read from abstractTrace[opICFGNode], not current node
+        // AddrStmt: generates value, no RHS ValVar needed
+    }
+
+    // For CallICFGNode, also collect actual arguments (for ExtAPI handlers)
+    if (const CallICFGNode* callNode = SVFUtil::dyn_cast<CallICFGNode>(node))
+    {
+        for (u32_t i = 0; i < callNode->getNumArgOperands(); i++)
+        {
+            addIfValVar(callNode->getArgument(i)->getId());
+        }
     }
 }
 
@@ -558,7 +684,9 @@ void AbstractInterpretation::handleSingletonWTO(const ICFGSingletonWTO *icfgSing
     const ICFGNode* node = icfgSingletonWto->getICFGNode();
     stat->getBlockTrace()++;
 
-    std::deque<const ICFGNode*> worklist;
+    // Semi-sparse: pull needed ValVars from def-sites before processing
+    if (Options::SemiSparse())
+        buildSparseState(node);
 
     stat->getICFGNodeTrace()++;
 
@@ -1183,8 +1311,10 @@ void AbstractInterpretation::updateStateOnPhi(const PhiStmt *phi)
         if (hasAbsStateFromTrace(opICFGNode))
         {
             AbstractState tmpEs = abstractTrace[opICFGNode];
-            AbstractState& opAs = getAbsStateFromTrace(opICFGNode);
             const ICFGEdge* edge =  icfg->getICFGEdge(opICFGNode, icfgNode, ICFGEdge::IntraCF);
+            // Semi-sparse: operand may not be in abstractTrace[opICFGNode],
+            // look up from def-site via getAbstractValueFromTrace
+            AbstractValue opVal = getAbstractValueFromTrace(opICFGNode, curId);
             // if IntraEdge, check the condition, if it is feasible, join the value
             // if IntraEdge but not conditional edge, join the value
             // if not IntraEdge, join the value
@@ -1194,14 +1324,14 @@ void AbstractInterpretation::updateStateOnPhi(const PhiStmt *phi)
                 if (intraEdge->getCondition())
                 {
                     if (isBranchFeasible(intraEdge, tmpEs))
-                        rhs.join_with(opAs[curId]);
+                        rhs.join_with(opVal);
                 }
                 else
-                    rhs.join_with(opAs[curId]);
+                    rhs.join_with(opVal);
             }
             else
             {
-                rhs.join_with(opAs[curId]);
+                rhs.join_with(opVal);
             }
         }
     }

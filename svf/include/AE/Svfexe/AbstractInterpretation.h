@@ -192,11 +192,20 @@ public:
             assert(false && "No preAbsTrace for this node");
             abort();
         }
-        else
+        if (Options::SemiSparse())
         {
-            //TODO: support sparse abstract state
-            return abstractTrace[node][varId];
+            const SVFVar* var = svfir->getGNode(varId);
+            if (const ValVar* vv = SVFUtil::dyn_cast<ValVar>(var))
+            {
+                const ICFGNode* defSite = vv->getICFGNode();
+                if (!defSite)
+                    defSite = icfg->getGlobalICFGNode();
+                if (abstractTrace.count(defSite))
+                    return abstractTrace[defSite][varId];
+                return AbstractValue();
+            }
         }
+        return abstractTrace[node][varId];
     }
 
 private:
@@ -309,6 +318,11 @@ private:
 
     void updateStateOnPhi(const PhiStmt *phi);
 
+    /// Semi-sparse: pull needed ValVars from their def-sites into abstractTrace[node]
+    void buildSparseState(const ICFGNode* node);
+
+    /// Semi-sparse: collect RHS ValVars needed by statements at this node
+    void collectNeededVars(const ICFGNode* node, Set<const ValVar*>& neededValVars);
 
     /// protected data members, also used in subclasses
     SVFIR* svfir;
