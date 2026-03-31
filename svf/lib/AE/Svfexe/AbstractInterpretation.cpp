@@ -163,8 +163,9 @@ void AbstractInterpretation::analyzeFromAllProgEntries()
 void AbstractInterpretation::handleGlobalNode()
 {
     const ICFGNode* node = icfg->getGlobalICFGNode();
-    svfStateMgr->getTrace()[node] = AbstractState();
-    svfStateMgr->getTrace()[node][IRGraph::NullPtr] = AddressValue();
+    svfStateMgr->updateAbstractState(node, AbstractState());
+    // TODO: we cannot find right SVFVar for NullPtr, so we use as[NullPtr] to set the value
+    svfStateMgr->getAbstractState(node)[IRGraph::NullPtr] = AddressValue();
 
     // Global Node, we just need to handle addr, load, store, copy and gep
     for (const SVFStmt *stmt: node->getSVFStmts())
@@ -184,400 +185,289 @@ void AbstractInterpretation::handleGlobalNode()
     // the interval domain and address domain gave contradictory information for the
     // same variable. The correct representation is an AddressValue containing the
     // BlackHole virtual address, which means "points to unknown memory".
-    svfStateMgr->getTrace()[node][PAG::getPAG()->getBlkPtr()] =
+    // TODO: we cannot find right SVFVar for BlkPtr, so we use as[BlkPtr] to set the value
+    svfStateMgr->getAbstractState(node)[PAG::getPAG()->getBlkPtr()] =
         AddressValue(BlackHoleObjAddr);
 }
 
 /// Pull-based state merge: for each predecessor that has an abstract state,
 /// copy its state, apply branch refinement for conditional IntraCFGEdges,
-/// and join all feasible states into svfStateMgr->getTrace()[node].
+/// and join all feasible states into svfStateMgr->getAbstractState(node).
 /// In semi-sparse mode, only ObjVar state (AddrToVal) is merged; ValVars are
 /// pulled on demand via getAbstractValue from their def-sites.
 /// Returns true if at least one predecessor contributed state.
 bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode* node)
 {
-    std::vector<AbstractState> intraWorkList;
-    std::vector<AbstractState> interWorkList;
+    bool first = true;
+
     for (auto& edge : node->getInEdges())
     {
         const ICFGNode* pred = edge->getSrcNode();
-        if (svfStateMgr->getTrace().find(pred) == svfStateMgr->getTrace().end())
+        if (!svfStateMgr->hasAbstractState(pred))
             continue;
+
+        // Determine whether this edge contributes state, and get a pointer to it.
+        const AbstractState* incoming = nullptr;
+        AbstractState narrowed;
 
         if (const IntraCFGEdge* intraCfgEdge = SVFUtil::dyn_cast<IntraCFGEdge>(edge))
         {
-            AbstractState tmpState = svfStateMgr->getTrace()[pred];
             if (intraCfgEdge->getCondition())
             {
-                if (isBranchFeasible(intraCfgEdge, tmpState, pred))
-                    intraWorkList.push_back(tmpState);
+                std::vector<std::pair<const ObjVar*, AbstractValue>> updates;
+                if (!isBranchFeasible(intraCfgEdge, updates))
+                    continue;
+                if (updates.empty())
+                {
+                    incoming = &svfStateMgr->getAbstractState(pred);
+                }
+                else
+                {
+                    narrowed = svfStateMgr->getAbstractState(pred);
+                    for (auto& [objVar, val] : updates)
+                        narrowed.store(AbstractState::getVirtualMemAddress(objVar->getId()), val);
+                    incoming = &narrowed;
+                }
             }
             else
             {
-                intraWorkList.push_back(tmpState);
+                incoming = &svfStateMgr->getAbstractState(pred);
             }
         }
         else if (SVFUtil::isa<CallCFGEdge>(edge))
         {
-            AbstractState tmpState = svfStateMgr->getTrace()[pred];
-            interWorkList.push_back(tmpState);
+            incoming = &svfStateMgr->getAbstractState(pred);
         }
         else if (SVFUtil::isa<RetCFGEdge>(edge))
         {
             switch (Options::HandleRecur())
             {
             case TOP:
-            {
-                AbstractState tmpState = svfStateMgr->getTrace()[pred];
-                interWorkList.push_back(tmpState);
+                incoming = &svfStateMgr->getAbstractState(pred);
                 break;
-            }
             case WIDEN_ONLY:
             case WIDEN_NARROW:
             {
                 const RetICFGNode* returnSite = SVFUtil::dyn_cast<RetICFGNode>(node);
                 const CallICFGNode* callSite = returnSite->getCallICFGNode();
                 if (svfStateMgr->hasAbstractState(callSite))
-                {
-                    AbstractState tmpState = svfStateMgr->getTrace()[pred];
-                    interWorkList.push_back(tmpState);
-                }
+                    incoming = &svfStateMgr->getAbstractState(pred);
                 break;
             }
             }
         }
+
+        if (!incoming)
+            continue;
+
+        if (first)
+        {
+            svfStateMgr->updateAbstractState(node, *incoming);
+            first = false;
+        }
+        else
+            svfStateMgr->getAbstractState(node).joinWith(*incoming);
     }
 
-    if (intraWorkList.empty() && interWorkList.empty())
-        return false;
-
-    // joinWith internally skips ValVar merge in semi-sparse mode.
-    bool first = true;
-    for (auto& state : intraWorkList)
-    {
-        if (first) { svfStateMgr->getTrace()[node] = state; first = false; }
-        else svfStateMgr->getTrace()[node].joinWith(state);
-    }
-    for (auto& state : interWorkList)
-    {
-        if (first) { svfStateMgr->getTrace()[node] = state; first = false; }
-        else svfStateMgr->getTrace()[node].joinWith(state);
-    }
-
-    return true;
+    return !first;
 }
 
 
-bool AbstractInterpretation::isCmpBranchFeasible(const CmpStmt* cmpStmt, s64_t succ,
-        AbstractState& as, const ICFGNode* predNode)
+bool AbstractInterpretation::isCmpBranchFeasible(
+    const CmpStmt* cmpStmt, s64_t succ, const ICFGNode* pred,
+    std::vector<std::pair<const ObjVar*, AbstractValue>>& updates)
 {
-    AbstractState new_es = as;
-    // get cmp stmt's op0, op1, and predicate
-    NodeID op0 = cmpStmt->getOpVarID(0);
-    NodeID op1 = cmpStmt->getOpVarID(1);
-    NodeID res_id = cmpStmt->getResID();
-    // Ensure ValVar operands are in new_es via getAbstractValue
-    // (handles semi-sparse def-site lookup and dense uninitialized vars).
-    if (!new_es.inVarToValTable(op0) && !new_es.inVarToAddrsTable(op0))
-        new_es[op0] = svfStateMgr->getAbstractValue(cmpStmt->getOpVar(0), predNode);
-    if (!new_es.inVarToValTable(op1) && !new_es.inVarToAddrsTable(op1))
-        new_es[op1] = svfStateMgr->getAbstractValue(cmpStmt->getOpVar(1), predNode);
-    if (!new_es.inVarToValTable(res_id) && !new_es.inVarToAddrsTable(res_id))
-        new_es[res_id] = svfStateMgr->getAbstractValue(cmpStmt->getRes(), predNode);
+    NodeID op0id = cmpStmt->getOpVarID(0);
+    NodeID op1id = cmpStmt->getOpVarID(1);
     s32_t predicate = cmpStmt->getPredicate();
-    // if op0 or op1 is nullptr, no need to change value, just copy the state
-    if (op0 == IRGraph::NullPtr || op1 == IRGraph::NullPtr)
-    {
-        as = new_es;
+
+    // No narrowing possible for nullptr or address comparisons;
+    // return true (feasible) directly because updateStateOnCmp does not
+    // faithfully model the predicate for these cases, so the resVal
+    // stored in the state may be wrong — checking it would incorrectly
+    // prune reachable branches.
+    if (op0id == IRGraph::NullPtr || op1id == IRGraph::NullPtr)
         return true;
-    }
-    // if op0 or op1 is undefined, return;
-    // skip address compare
-    if (new_es.inVarToAddrsTable(op0) || new_es.inVarToAddrsTable(op1))
-    {
-        as = new_es;
+    AbstractValue op0AbsVal = svfStateMgr->getAbstractValue(cmpStmt->getOpVar(0), pred);
+    AbstractValue op1AbsVal = svfStateMgr->getAbstractValue(cmpStmt->getOpVar(1), pred);
+    if (op0AbsVal.isAddr() || op1AbsVal.isAddr())
         return true;
-    }
-    const LoadStmt *load_op0 = nullptr;
-    const LoadStmt *load_op1 = nullptr;
-    // get '%1 = load i32 s', and load inst may not exist
-    const SVFVar* loadVar0 = getSVFVar(op0);
+
+    // Feasibility check: cmp result must be compatible with branch successor
+    IntervalValue resVal = svfStateMgr->getAbstractValue(cmpStmt->getRes(), pred).getInterval();
+    resVal.meet_with(IntervalValue((s64_t)succ, succ));
+    if (resVal.isBottom())
+        return false;
+
+    // Walk load chain to find backing LoadStmt for op0 / op1
+    const LoadStmt* load_op0 = nullptr;
+    const LoadStmt* load_op1 = nullptr;
+    const SVFVar* loadVar0 = getSVFVar(op0id);
     if (!loadVar0->getInEdges().empty())
     {
-        SVFStmt *loadVar0InStmt = *loadVar0->getInEdges().begin();
-        if (const LoadStmt *loadStmt = SVFUtil::dyn_cast<LoadStmt>(loadVar0InStmt))
+        SVFStmt* inStmt = *loadVar0->getInEdges().begin();
+        if (const LoadStmt* ls = SVFUtil::dyn_cast<LoadStmt>(inStmt))
+            load_op0 = ls;
+        else if (const CopyStmt* cs = SVFUtil::dyn_cast<CopyStmt>(inStmt))
         {
-            load_op0 = loadStmt;
-        }
-        else if (const CopyStmt *copyStmt = SVFUtil::dyn_cast<CopyStmt>(loadVar0InStmt))
-        {
-            loadVar0 = getSVFVar(copyStmt->getRHSVarID());
+            loadVar0 = getSVFVar(cs->getRHSVarID());
             if (!loadVar0->getInEdges().empty())
-            {
-                SVFStmt *loadVar0InStmt2 = *loadVar0->getInEdges().begin();
-                if (const LoadStmt *loadStmt = SVFUtil::dyn_cast<LoadStmt>(loadVar0InStmt2))
-                {
-                    load_op0 = loadStmt;
-                }
-            }
+                if (const LoadStmt* ls2 = SVFUtil::dyn_cast<LoadStmt>(*loadVar0->getInEdges().begin()))
+                    load_op0 = ls2;
         }
     }
-
-    const SVFVar* loadVar1 = getSVFVar(op1);
+    const SVFVar* loadVar1 = getSVFVar(op1id);
     if (!loadVar1->getInEdges().empty())
     {
-        SVFStmt *loadVar1InStmt = *loadVar1->getInEdges().begin();
-        if (const LoadStmt *loadStmt = SVFUtil::dyn_cast<LoadStmt>(loadVar1InStmt))
+        SVFStmt* inStmt = *loadVar1->getInEdges().begin();
+        if (const LoadStmt* ls = SVFUtil::dyn_cast<LoadStmt>(inStmt))
+            load_op1 = ls;
+        else if (const CopyStmt* cs = SVFUtil::dyn_cast<CopyStmt>(inStmt))
         {
-            load_op1 = loadStmt;
-        }
-        else if (const CopyStmt *copyStmt = SVFUtil::dyn_cast<CopyStmt>(loadVar1InStmt))
-        {
-            loadVar1 = getSVFVar(copyStmt->getRHSVarID());
+            loadVar1 = getSVFVar(cs->getRHSVarID());
             if (!loadVar1->getInEdges().empty())
-            {
-                SVFStmt *loadVar1InStmt2 = *loadVar1->getInEdges().begin();
-                if (const LoadStmt *loadStmt = SVFUtil::dyn_cast<LoadStmt>(loadVar1InStmt2))
-                {
-                    load_op1 = loadStmt;
-                }
-            }
+                if (const LoadStmt* ls2 = SVFUtil::dyn_cast<LoadStmt>(*loadVar1->getInEdges().begin()))
+                    load_op1 = ls2;
         }
     }
-    // for const X const, we may get concrete resVal instantly
-    // for var X const, we may get [0,1] if the intersection of var and const is not empty set
-    IntervalValue resVal = new_es[res_id].getInterval();
-    resVal.meet_with(IntervalValue((s64_t) succ, succ));
-    // If Var X const generates bottom value, it means this branch path is not feasible.
-    if (resVal.isBottom())
-    {
-        return false;
-    }
 
-    bool b0 = new_es[op0].getInterval().is_numeral();
-    bool b1 = new_es[op1].getInterval().is_numeral();
-
-    // if const X var, we should reverse op0 and op1.
+    bool b0 = op0AbsVal.getInterval().is_numeral();
+    bool b1 = op1AbsVal.getInterval().is_numeral();
+    // var X var or const X const: no useful narrowing
+    if ((!b0 && !b1) || (b0 && b1))
+        return true;
+    // const X var: swap so lhs is always the variable side
     if (b0 && !b1)
     {
-        std::swap(op0, op1);
+        std::swap(op0id, op1id);
         std::swap(load_op0, load_op1);
+        std::swap(op0AbsVal, op1AbsVal);
         predicate = _switch_lhsrhs_predicate[predicate];
     }
-    else
-    {
-        // if var X var, we cannot preset the branch condition to infer the intervals of var0,var1
-        if (!b0 && !b1)
-        {
-            as = new_es;
-            return true;
-        }
-        // if const X const, we can instantly get the resVal
-        else if (b0 && b1)
-        {
-            as = new_es;
-            return true;
-        }
-    }
-    // if cmp is 'var X const == false', we should reverse predicate 'var X' const == true'
-    // X' is reverse predicate of X
+    // false branch: reverse predicate
     if (succ == 0)
-    {
         predicate = _reverse_predicate[predicate];
-    }
-    else {}
-    // change interval range according to the compare predicate
-    AddressValue addrs;
-    if(load_op0 && new_es.inVarToAddrsTable(load_op0->getRHSVarID()))
-        addrs = new_es[load_op0->getRHSVarID()].getAddrs();
 
-    IntervalValue &lhs = new_es[op0].getInterval(), &rhs = new_es[op1].getInterval();
+    // Get addresses of the backing memory object (if any) for the lhs register
+    AddressValue addrs;
+    if (load_op0)
+        addrs = svfStateMgr->getAbstractValue(svfir->getSVFVar(load_op0->getRHSVarID()), pred).getAddrs();
+
+    const IntervalValue& rhs = op1AbsVal.getInterval();
+
+    // Compute the narrowing constraint from the predicate
+    IntervalValue constraint;
     switch (predicate)
     {
     case CmpStmt::Predicate::ICMP_EQ:
     case CmpStmt::Predicate::FCMP_OEQ:
     case CmpStmt::Predicate::FCMP_UEQ:
-    {
-        // Var == Const, so [var.lb, var.ub].meet_with(const)
-        lhs.meet_with(rhs);
-        // if lhs is register value, we should also change its mem obj
-        for (const auto &addr: addrs)
-        {
-            NodeID objId = new_es.getIDFromAddr(addr);
-            if (new_es.inAddrToValTable(objId))
-            {
-                new_es.load(addr).meet_with(rhs);
-            }
-        }
+        constraint = rhs;
         break;
-    }
     case CmpStmt::Predicate::ICMP_NE:
     case CmpStmt::Predicate::FCMP_ONE:
     case CmpStmt::Predicate::FCMP_UNE:
-        // Compliment set
-        break;
+    case CmpStmt::Predicate::FCMP_FALSE:
+    case CmpStmt::Predicate::FCMP_TRUE:
+        return true;
     case CmpStmt::Predicate::ICMP_UGT:
     case CmpStmt::Predicate::ICMP_SGT:
     case CmpStmt::Predicate::FCMP_OGT:
     case CmpStmt::Predicate::FCMP_UGT:
-        // Var > Const, so [var.lb, var.ub].meet_with([Const+1, +INF])
-        lhs.meet_with(IntervalValue(rhs.lb() + 1, IntervalValue::plus_infinity()));
-        // if lhs is register value, we should also change its mem obj
-        for (const auto &addr: addrs)
-        {
-            NodeID objId = new_es.getIDFromAddr(addr);
-            if (new_es.inAddrToValTable(objId))
-            {
-                new_es.load(addr).meet_with(
-                    IntervalValue(rhs.lb() + 1, IntervalValue::plus_infinity()));
-            }
-        }
+        constraint = IntervalValue(rhs.lb() + 1, IntervalValue::plus_infinity());
         break;
     case CmpStmt::Predicate::ICMP_UGE:
     case CmpStmt::Predicate::ICMP_SGE:
     case CmpStmt::Predicate::FCMP_OGE:
     case CmpStmt::Predicate::FCMP_UGE:
-    {
-        // Var >= Const, so [var.lb, var.ub].meet_with([Const, +INF])
-        lhs.meet_with(IntervalValue(rhs.lb(), IntervalValue::plus_infinity()));
-        // if lhs is register value, we should also change its mem obj
-        for (const auto &addr: addrs)
-        {
-            NodeID objId = new_es.getIDFromAddr(addr);
-            if (new_es.inAddrToValTable(objId))
-            {
-                new_es.load(addr).meet_with(
-                    IntervalValue(rhs.lb(), IntervalValue::plus_infinity()));
-            }
-        }
+        constraint = IntervalValue(rhs.lb(), IntervalValue::plus_infinity());
         break;
-    }
     case CmpStmt::Predicate::ICMP_ULT:
     case CmpStmt::Predicate::ICMP_SLT:
     case CmpStmt::Predicate::FCMP_OLT:
     case CmpStmt::Predicate::FCMP_ULT:
-    {
-        // Var < Const, so [var.lb, var.ub].meet_with([-INF, const.ub-1])
-        lhs.meet_with(IntervalValue(IntervalValue::minus_infinity(), rhs.ub() - 1));
-        // if lhs is register value, we should also change its mem obj
-        for (const auto &addr: addrs)
-        {
-            NodeID objId = new_es.getIDFromAddr(addr);
-            if (new_es.inAddrToValTable(objId))
-            {
-                new_es.load(addr).meet_with(
-                    IntervalValue(IntervalValue::minus_infinity(), rhs.ub() - 1));
-            }
-        }
+        constraint = IntervalValue(IntervalValue::minus_infinity(), rhs.ub() - 1);
         break;
-    }
     case CmpStmt::Predicate::ICMP_ULE:
     case CmpStmt::Predicate::ICMP_SLE:
     case CmpStmt::Predicate::FCMP_OLE:
     case CmpStmt::Predicate::FCMP_ULE:
-    {
-        // Var <= Const, so [var.lb, var.ub].meet_with([-INF, const.ub])
-        lhs.meet_with(IntervalValue(IntervalValue::minus_infinity(), rhs.ub()));
-        // if lhs is register value, we should also change its mem obj
-        for (const auto &addr: addrs)
-        {
-            NodeID objId = new_es.getIDFromAddr(addr);
-            if (new_es.inAddrToValTable(objId))
-            {
-                new_es.load(addr).meet_with(
-                    IntervalValue(IntervalValue::minus_infinity(), rhs.ub()));
-            }
-        }
-        break;
-    }
-    case CmpStmt::Predicate::FCMP_FALSE:
-        break;
-    case CmpStmt::Predicate::FCMP_TRUE:
+        constraint = IntervalValue(IntervalValue::minus_infinity(), rhs.ub());
         break;
     default:
         assert(false && "implement this part");
         abort();
     }
-    as = new_es;
+
+    // Narrow each ObjVar behind op0's load chain and record the update
+    const AbstractState& predState = svfStateMgr->getAbstractState(pred);
+    for (const auto& addr : addrs)
+    {
+        NodeID objId = predState.getIDFromAddr(addr);
+        if (predState.inAddrToValTable(objId))
+        {
+            const ObjVar* objVar = SVFUtil::dyn_cast<ObjVar>(svfir->getSVFVar(objId));
+            AbstractValue objAbsVal = svfStateMgr->getAbstractValue(objVar, pred);
+            objAbsVal.getInterval().meet_with(constraint);
+            updates.push_back({objVar, objAbsVal});
+        }
+    }
     return true;
 }
 
-bool AbstractInterpretation::isSwitchBranchFeasible(const SVFVar* var, s64_t succ,
-        AbstractState& as, const ICFGNode* predNode)
+bool AbstractInterpretation::isSwitchBranchFeasible(
+    const SVFVar* var, s64_t succ, const ICFGNode* pred,
+    std::vector<std::pair<const ObjVar*, AbstractValue>>& updates)
 {
-    AbstractState new_es = as;
-    if (!new_es.inVarToValTable(var->getId()) && !new_es.inVarToAddrsTable(var->getId()))
-        new_es[var->getId()] = svfStateMgr->getAbstractValue(var, predNode);
-    IntervalValue& switch_cond = new_es[var->getId()].getInterval();
-    s64_t value = succ;
-    FIFOWorkList<const SVFStmt*> workList;
-    for (SVFStmt *cmpVarInStmt: var->getInEdges())
-    {
-        workList.push(cmpVarInStmt);
-    }
-    switch_cond.meet_with(IntervalValue(value, value));
-    if (switch_cond.isBottom())
-    {
+    AbstractValue condAbsVal = svfStateMgr->getAbstractValue(var, pred);
+    condAbsVal.getInterval().meet_with(IntervalValue(succ, succ));
+    if (condAbsVal.getInterval().isBottom())
         return false;
-    }
-    while(!workList.empty())
+
+    const IntervalValue& narrowed = condAbsVal.getInterval();
+    const AbstractState& predState = svfStateMgr->getAbstractState(pred);
+    FIFOWorkList<const SVFStmt*> stmtList;
+    for (SVFStmt* stmt : var->getInEdges())
+        stmtList.push(stmt);
+    while (!stmtList.empty())
     {
-        const SVFStmt* stmt = workList.pop();
-        if (SVFUtil::isa<CopyStmt>(stmt))
+        const SVFStmt* stmt = stmtList.pop();
+        if (const LoadStmt* load = SVFUtil::dyn_cast<LoadStmt>(stmt))
         {
-            IntervalValue& copy_cond = new_es[var->getId()].getInterval();
-            copy_cond.meet_with(IntervalValue(value, value));
-        }
-        else if (const LoadStmt* load = SVFUtil::dyn_cast<LoadStmt>(stmt))
-        {
-            if (new_es.inVarToAddrsTable(load->getRHSVarID()))
+            AddressValue addrs = svfStateMgr->getAbstractValue(
+                svfir->getSVFVar(load->getRHSVarID()), pred).getAddrs();
+            for (const auto& addr : addrs)
             {
-                AddressValue &addrs = new_es[load->getRHSVarID()].getAddrs();
-                for (const auto &addr: addrs)
+                NodeID objId = predState.getIDFromAddr(addr);
+                if (predState.inAddrToValTable(objId))
                 {
-                    NodeID objId = new_es.getIDFromAddr(addr);
-                    if (new_es.inAddrToValTable(objId))
-                    {
-                        new_es.load(addr).meet_with(switch_cond);
-                    }
+                    const ObjVar* objVar = SVFUtil::dyn_cast<ObjVar>(svfir->getSVFVar(objId));
+                    AbstractValue objAbsVal = svfStateMgr->getAbstractValue(objVar, pred);
+                    objAbsVal.getInterval().meet_with(narrowed);
+                    updates.push_back({objVar, objAbsVal});
                 }
             }
         }
     }
-    as = new_es;
     return true;
 }
 
-bool AbstractInterpretation::isBranchFeasible(const IntraCFGEdge* intraEdge,
-        AbstractState& as, const ICFGNode* predNode)
+bool AbstractInterpretation::isBranchFeasible(const IntraCFGEdge* edge,
+    std::vector<std::pair<const ObjVar*, AbstractValue>>& updates)
 {
-    const SVFVar *cmpVar = intraEdge->getCondition();
-    if (cmpVar->getInEdges().empty())
-    {
-        return isSwitchBranchFeasible(cmpVar,
-                                      intraEdge->getSuccessorCondValue(), as, predNode);
-    }
+    const ICFGNode* pred = edge->getSrcNode();
+    const SVFVar* cmpVar = edge->getCondition();
+    s64_t succ = edge->getSuccessorCondValue();
+    assert(!cmpVar->getInEdges().empty() && "branch condition has no defining edge?");
+    if (const CmpStmt* cmpStmt = SVFUtil::dyn_cast<CmpStmt>(*cmpVar->getInEdges().begin()))
+        return isCmpBranchFeasible(cmpStmt, succ, pred, updates);
     else
-    {
-        assert(!cmpVar->getInEdges().empty() &&
-               "no in edges?");
-        SVFStmt *cmpVarInStmt = *cmpVar->getInEdges().begin();
-        if (const CmpStmt *cmpStmt = SVFUtil::dyn_cast<CmpStmt>(cmpVarInStmt))
-        {
-            return isCmpBranchFeasible(cmpStmt,
-                                       intraEdge->getSuccessorCondValue(), as, predNode);
-        }
-        else
-        {
-            return isSwitchBranchFeasible(
-                       cmpVar, intraEdge->getSuccessorCondValue(), as, predNode);
-        }
-    }
-    return true;
+        return isSwitchBranchFeasible(cmpVar, succ, pred, updates);
 }
+
 /**
  * Handle an ICFG node: execute statements on the current abstract state.
- * The node's pre-state must already be in svfStateMgr->getTrace() (set by
+ * The node's pre-state must already be in svfStateMgr->getAbstractState(node) (set by
  * mergeStatesFromPredecessors, or by handleGlobalNode for the global node).
  * Returns true if the abstract state has changed, false if fixpoint reached or unreachable.
  */
@@ -592,9 +482,9 @@ bool AbstractInterpretation::handleICFGNode(const ICFGNode* node)
             // Entry point with no callers: inherit from global node
             const ICFGNode* globalNode = icfg->getGlobalICFGNode();
             if (svfStateMgr->hasAbstractState(globalNode))
-                svfStateMgr->getTrace()[node] = svfStateMgr->getTrace()[globalNode];
+                svfStateMgr->updateAbstractState(node, svfStateMgr->getAbstractState(globalNode));
             else
-                svfStateMgr->getTrace()[node] = AbstractState();
+                svfStateMgr->updateAbstractState(node, AbstractState());
         }
         else
         {
@@ -603,7 +493,7 @@ bool AbstractInterpretation::handleICFGNode(const ICFGNode* node)
     }
 
     // Store the previous state for fixpoint detection
-    AbstractState prevState = svfStateMgr->getTrace()[node];
+    AbstractState prevState = svfStateMgr->getAbstractState(node);
 
     stat->getBlockTrace()++;
     stat->getICFGNodeTrace()++;
@@ -628,7 +518,7 @@ bool AbstractInterpretation::handleICFGNode(const ICFGNode* node)
     // Track this node as analyzed (for coverage statistics across all entry points)
     allAnalyzedNodes.insert(node);
 
-    if (svfStateMgr->getTrace()[node] == prevState)
+    if (svfStateMgr->getAbstractState(node) == prevState)
         return false;
 
     return true;
@@ -723,7 +613,7 @@ void AbstractInterpretation::handleRecursiveCall(const CallICFGNode *callNode)
             }
         }
     }
-    svfStateMgr->getTrace()[retNode] = as;
+    svfStateMgr->updateAbstractState(retNode, as);
 }
 
 /// Check if caller and callee are in the same CallGraph SCC (i.e. a recursive callsite)
@@ -816,8 +706,6 @@ bool AbstractInterpretation::shouldApplyNarrowing(const FunObjVar* fun)
 /// possible indirect call targets.
 void AbstractInterpretation::handleFunCall(const CallICFGNode *callNode)
 {
-    AbstractState& as = svfStateMgr->getAbstractState(callNode);
-    svfStateMgr->getTrace()[callNode] = as;
     if (skipRecursiveCall(callNode))
         return;
 
@@ -827,7 +715,7 @@ void AbstractInterpretation::handleFunCall(const CallICFGNode *callNode)
         const ICFGNode* calleeEntry = icfg->getFunEntryICFGNode(callee);
         handleFunction(calleeEntry, callNode);
         const RetICFGNode* retNode = callNode->getRetICFGNode();
-        svfStateMgr->getTrace()[retNode] = svfStateMgr->getTrace()[callNode];
+        svfStateMgr->updateAbstractState(retNode, svfStateMgr->getAbstractState(callNode));
         return;
     }
 
@@ -845,7 +733,7 @@ void AbstractInterpretation::handleFunCall(const CallICFGNode *callNode)
         }
     }
     // Resume return node from caller's state (context-insensitive)
-    svfStateMgr->getTrace()[retNode] = svfStateMgr->getTrace()[callNode];
+    svfStateMgr->updateAbstractState(retNode, svfStateMgr->getAbstractState(callNode));
 }
 
 /// Handle WTO cycle (loop or recursive function) using widening/narrowing iteration.
@@ -908,18 +796,18 @@ void AbstractInterpretation::handleLoopOrRecursion(const ICFGCycleWTO* cycle, co
         if (cur_iter >= widen_delay)
         {
             // Save state before processing head
-            AbstractState prev_head_state = svfStateMgr->getTrace()[cycle_head];
+            AbstractState prev_head_state = svfStateMgr->getAbstractState(cycle_head);
 
             // Process cycle head: merge from predecessors, then execute statements
             // (uses same gated pattern as handleWTOComponent in origin/master)
             if (mergeStatesFromPredecessors(cycle_head))
                 handleICFGNode(cycle_head);
-            AbstractState cur_head_state = svfStateMgr->getTrace()[cycle_head];
+            AbstractState cur_head_state = svfStateMgr->getAbstractState(cycle_head);
 
             if (increasing)
             {
-                svfStateMgr->getTrace()[cycle_head] = prev_head_state.widening(cur_head_state);
-                if (svfStateMgr->getTrace()[cycle_head] == prev_head_state)
+                svfStateMgr->updateAbstractState(cycle_head, prev_head_state.widening(cur_head_state));
+                if (svfStateMgr->getAbstractState(cycle_head) == prev_head_state)
                 {
                     // Widening fixpoint reached; switch to narrowing phase.
                     increasing = false;
@@ -930,8 +818,8 @@ void AbstractInterpretation::handleLoopOrRecursion(const ICFGCycleWTO* cycle, co
             {
                 if (!shouldApplyNarrowing(cycle_head->getFun()))
                     break;
-                svfStateMgr->getTrace()[cycle_head] = prev_head_state.narrowing(cur_head_state);
-                if (svfStateMgr->getTrace()[cycle_head] == prev_head_state)
+                svfStateMgr->updateAbstractState(cycle_head, prev_head_state.narrowing(cur_head_state));
+                if (svfStateMgr->getAbstractState(cycle_head) == prev_head_state)
                     break;
             }
         }
@@ -1105,20 +993,15 @@ void AbstractInterpretation::updateStateOnPhi(const PhiStmt *phi)
         const ICFGNode* opICFGNode = phi->getOpICFGNode(i);
         if (svfStateMgr->hasAbstractState(opICFGNode))
         {
-            AbstractState tmpEs = svfStateMgr->getTrace()[opICFGNode];
-            const ICFGEdge* edge = icfg->getICFGEdge(opICFGNode, icfgNode, ICFGEdge::IntraCF);
-
-            // Read phi operand via getAbstractValue from the predecessor node.
-            // Dense: reads from svfStateMgr->getTrace()[opICFGNode] (same as tmpEs).
-            // Semi-sparse: falls through to def-site if not in predecessor state.
             AbstractValue opVal = svfStateMgr->getAbstractValue(phi->getOpVar(i), opICFGNode);
-
+            const ICFGEdge* edge = icfg->getICFGEdge(opICFGNode, icfgNode, ICFGEdge::IntraCF);
             if (edge)
             {
                 const IntraCFGEdge* intraEdge = SVFUtil::cast<IntraCFGEdge>(edge);
                 if (intraEdge->getCondition())
                 {
-                    if (isBranchFeasible(intraEdge, tmpEs, opICFGNode))
+                    std::vector<std::pair<const ObjVar*, AbstractValue>> unused;
+                    if (isBranchFeasible(intraEdge, unused))
                         rhs.join_with(opVal);
                 }
                 else

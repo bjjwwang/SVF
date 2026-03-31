@@ -61,6 +61,11 @@ AbstractState& AbstractStateManager::getAbstractState(const ICFGNode* node)
     return abstractTrace[node];
 }
 
+void AbstractStateManager::updateAbstractState(const ICFGNode* node, const AbstractState& state)
+{
+    abstractTrace[node] = state;
+}
+
 bool AbstractStateManager::hasAbstractState(const ICFGNode* node)
 {
     return abstractTrace.count(node) != 0;

@@ -138,8 +138,9 @@ private:
     /// abstractTrace[node]. Returns true if at least one predecessor had state.
     bool mergeStatesFromPredecessors(const ICFGNode* node);
 
-    /// Check if the branch on intraEdge is feasible under abstract state as
-    bool isBranchFeasible(const IntraCFGEdge* intraEdge, AbstractState& as, const ICFGNode* predNode);
+    /// Returns true if the branch on intraEdge is reachable; populates updates with narrowed ObjVar values.
+    bool isBranchFeasible(const IntraCFGEdge* edge,
+                          std::vector<std::pair<const ObjVar*, AbstractValue>>& updates);
 
     /// Handle a call site node: dispatch to ext-call, direct-call, or indirect-call handling
     virtual void handleCallSite(const ICFGNode* node);
@@ -156,15 +157,17 @@ private:
     /// Dispatch an SVF statement (Addr/Binary/Cmp/Load/Store/Copy/Gep/Select/Phi/Call/Ret) to its handler
     virtual void handleSVFStatement(const SVFStmt* stmt);
 
-    /// Set all store targets and return value to TOP for a recursive call node
+    /// Set all store targets and return value to TOP for a recursive cal node
     virtual void setTopToObjInRecursion(const CallICFGNode* callnode);
 
-    /// Check if cmpStmt with successor value succ is feasible; refine intervals in as accordingly
-    bool isCmpBranchFeasible(const CmpStmt* cmpStmt, s64_t succ,
-                             AbstractState& as, const ICFGNode* predNode);
+    /// Checks if cmpStmt's branch to succ is feasible under pred's state; populates updates with narrowed ObjVar values.
+    bool isCmpBranchFeasible(const CmpStmt* cmpStmt, s64_t succ, const ICFGNode* pred,
+                             std::vector<std::pair<const ObjVar*, AbstractValue>>& updates);
 
-    /// Check if switch branch with case value succ is feasible; refine intervals in as accordingly
-    bool isSwitchBranchFeasible(const SVFVar* var, s64_t succ, AbstractState& as, const ICFGNode* predNode);
+    /// Checks if the condition variable's interval can include `succ`;
+    /// used for switch cases and any branch whose condition is not a CmpStmt.
+    bool isSwitchBranchFeasible(const SVFVar* var, s64_t succ, const ICFGNode* pred,
+                               std::vector<std::pair<const ObjVar*, AbstractValue>>& updates);
 
     void updateStateOnAddr(const AddrStmt *addr);
 

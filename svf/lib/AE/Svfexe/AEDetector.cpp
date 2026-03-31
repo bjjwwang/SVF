@@ -83,7 +83,7 @@ void BufOverflowDetector::detect(const ICFGNode* node)
                     }
 
                     // Calculate access offset and check for potential overflow
-                    IntervalValue accessOffset = getAccessOffset(objId, gep, node);
+                    IntervalValue accessOffset = getAccessOffset(objId, gep);
                     if (accessOffset.ub().getIntNumeral() >= size)
                     {
                         AEException bug(stmt->toString());
