@@ -434,7 +434,7 @@ bool AbstractInterpretation::isSwitchBranchFeasible(
         const SVFStmt* stmt = stmtList.pop();
         if (const LoadStmt* load = SVFUtil::dyn_cast<LoadStmt>(stmt))
         {
-            AddressValue addrs = svfStateMgr->getAbstractValue(
+            const AddressValue& addrs = svfStateMgr->getAbstractValue(
                 svfir->getSVFVar(load->getRHSVarID()), pred).getAddrs();
             for (const auto& addr : addrs)
             {
@@ -641,7 +641,7 @@ const FunObjVar* AbstractInterpretation::getCallee(const CallICFGNode* callNode)
     if (!svfStateMgr->hasAbstractState(callNode))
         return nullptr;
 
-    AbstractState& as = svfStateMgr->getAbstractState(callNode);
+    const AbstractState& as = svfStateMgr->getAbstractState(callNode);
     if (!as.inVarToAddrsTable(call_id))
         return nullptr;
 
@@ -993,7 +993,7 @@ void AbstractInterpretation::updateStateOnPhi(const PhiStmt *phi)
         const ICFGNode* opICFGNode = phi->getOpICFGNode(i);
         if (svfStateMgr->hasAbstractState(opICFGNode))
         {
-            AbstractValue opVal = svfStateMgr->getAbstractValue(phi->getOpVar(i), opICFGNode);
+            const AbstractValue& opVal = svfStateMgr->getAbstractValue(phi->getOpVar(i), opICFGNode);
             const ICFGEdge* edge = icfg->getICFGEdge(opICFGNode, icfgNode, ICFGEdge::IntraCF);
             if (edge)
             {
@@ -1117,8 +1117,8 @@ void AbstractInterpretation::updateStateOnCmp(const CmpStmt *cmp)
     if (op0Val.isAddr() && op1Val.isAddr())
     {
         IntervalValue resVal;
-        AddressValue addrOp0 = op0Val.getAddrs();
-        AddressValue addrOp1 = op1Val.getAddrs();
+        const AddressValue& addrOp0 = op0Val.getAddrs();
+        const AddressValue& addrOp1 = op1Val.getAddrs();
         if (addrOp0.equals(addrOp1))
         {
             resVal = IntervalValue(1, 1);
@@ -1207,8 +1207,8 @@ void AbstractInterpretation::updateStateOnCmp(const CmpStmt *cmp)
             }
             else if (op0Val.isAddr() && op1Val.isAddr())
             {
-                AddressValue lhs = op0Val.getAddrs(),
-                             rhs = op1Val.getAddrs();
+                const AddressValue& lhs = op0Val.getAddrs();
+                const AddressValue& rhs = op1Val.getAddrs();
                 auto predicate = cmp->getPredicate();
                 switch (predicate)
                 {
