@@ -59,7 +59,7 @@ void BufOverflowDetector::detect(const ICFGNode* node)
                 const AbstractValue& rhsVal = mgr->getAbstractValue(gep->getRHSVar(), node);
                 updateGepObjOffsetFromBase(node, lhsVal.getAddrs(), rhsVal.getAddrs(), mgr->getGepByteOffset(gep));
 
-                AddressValue objAddrs = rhsVal.getAddrs();
+                const AddressValue& objAddrs = rhsVal.getAddrs();
                 for (const auto& addr : objAddrs)
                 {
                     NodeID objId = mgr->getAbstractState(node).getIDFromAddr(addr);
@@ -664,7 +664,7 @@ void NullptrDerefDetector::detectExtAPI(const CallICFGNode* call)
 bool NullptrDerefDetector::canSafelyDerefPtr(const SVFVar* value, const ICFGNode* node)
 {
     AbstractStateManager* mgr = AbstractInterpretation::getAEInstance().getStateMgr();
-    AbstractValue AbsVal = mgr->getAbstractValue(value, node);
+    const AbstractValue& AbsVal = mgr->getAbstractValue(value, node);
     // uninit value cannot be dereferenced, return unsafe
     if (isUninit(AbsVal)) return false;
     // Interval Value (non-addr) is not the checkpoint of nullptr dereference, return safe

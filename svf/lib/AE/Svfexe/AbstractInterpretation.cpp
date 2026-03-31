@@ -645,7 +645,7 @@ const FunObjVar* AbstractInterpretation::getCallee(const CallICFGNode* callNode)
     if (!as.inVarToAddrsTable(call_id))
         return nullptr;
 
-    AbstractValue Addrs = svfStateMgr->getAbstractValue(svfir->getSVFVar(call_id), callNode);
+    const AbstractValue& Addrs = svfStateMgr->getAbstractValue(svfir->getSVFVar(call_id), callNode);
     if (Addrs.getAddrs().empty())
         return nullptr;
 
