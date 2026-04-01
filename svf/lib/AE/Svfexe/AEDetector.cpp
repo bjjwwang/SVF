@@ -129,7 +129,7 @@ void BufOverflowDetector::handleStubFunctions(const SVF::CallICFGNode* callNode)
             val = IntervalValue(0);
             assert(false && "SAFE_BUFACCESS size is bottom");
         }
-        const SVFVar* arg0Val = callNode->getArgument(0);
+        const ValVar* arg0Val = callNode->getArgument(0);
         bool isSafe = canSafelyAccessMemory(arg0Val, val, callNode);
         if (isSafe)
         {
@@ -153,7 +153,7 @@ void BufOverflowDetector::handleStubFunctions(const SVF::CallICFGNode* callNode)
         {
             assert(false && "UNSAFE_BUFACCESS size is bottom");
         }
-        const SVFVar* arg0Val = callNode->getArgument(0);
+        const ValVar* arg0Val = callNode->getArgument(0);
         bool isSafe = canSafelyAccessMemory(arg0Val, val, callNode);
         if (!isSafe)
         {
@@ -242,7 +242,7 @@ void BufOverflowDetector::detectExtAPI(const CallICFGNode* call)
         for (auto arg : args)
         {
             IntervalValue offset = ae.getAbsValue(call->getArgument(arg.second), call).getInterval() - IntervalValue(1);
-            const SVFVar* argVar = call->getArgument(arg.first);
+            const ValVar* argVar = call->getArgument(arg.first);
             if (!canSafelyAccessMemory(argVar, offset, call))
             {
                 AEException bug(call->toString());
@@ -262,7 +262,7 @@ void BufOverflowDetector::detectExtAPI(const CallICFGNode* call)
         for (auto arg : args)
         {
             IntervalValue offset = ae.getAbsValue(call->getArgument(arg.second), call).getInterval() - IntervalValue(1);
-            const SVFVar* argVar = call->getArgument(arg.first);
+            const ValVar* argVar = call->getArgument(arg.first);
             if (!canSafelyAccessMemory(argVar, offset, call))
             {
                 AEException bug(call->toString());
@@ -457,7 +457,7 @@ bool BufOverflowDetector::detectStrcat(const CallICFGNode *call)
  * @param len The interval value representing the length of the memory access.
  * @return True if the memory access is safe, false otherwise.
  */
-bool BufOverflowDetector::canSafelyAccessMemory(const SVF::SVFVar* value, const SVF::IntervalValue& len, const ICFGNode* node)
+bool BufOverflowDetector::canSafelyAccessMemory(const SVF::ValVar* value, const SVF::IntervalValue& len, const ICFGNode* node)
 {
     SVFIR* svfir = PAG::getPAG();
     auto& ae = AbstractInterpretation::getAEInstance();
@@ -565,7 +565,7 @@ void NullptrDerefDetector::handleStubFunctions(const CallICFGNode* callNode)
         if (callNode->arg_size() < 1)
             return;
 
-        const SVFVar* arg0Val = callNode->getArgument(0);
+        const ValVar* arg0Val = callNode->getArgument(0);
         // opt may directly dereference a null pointer and call UNSAFE_LOAD(null)
         bool isSafe = canSafelyDerefPtr(arg0Val, callNode) && arg0Val->getId() != 0;
         if (!isSafe)
@@ -586,7 +586,7 @@ void NullptrDerefDetector::handleStubFunctions(const CallICFGNode* callNode)
         // void SAFE_LOAD(void* ptr);
         ae.getUtils()->checkpoints.erase(callNode);
         if (callNode->arg_size() < 1) return;
-        const SVFVar* arg0Val = callNode->getArgument(0);
+        const ValVar* arg0Val = callNode->getArgument(0);
         // opt may directly dereference a null pointer and call UNSAFE_LOAD(null)ols
         bool isSafe = canSafelyDerefPtr(arg0Val, callNode) && arg0Val->getId() != 0;
         if (isSafe)
@@ -653,7 +653,7 @@ void NullptrDerefDetector::detectExtAPI(const CallICFGNode* call)
     {
         if (call->arg_size() <= arg)
             continue;
-        const SVFVar* argVal = call->getArgument(arg);
+        const ValVar* argVal = call->getArgument(arg);
         if (argVal && !canSafelyDerefPtr(argVal, call))
         {
             AEException bug(call->toString());
@@ -663,7 +663,7 @@ void NullptrDerefDetector::detectExtAPI(const CallICFGNode* call)
 }
 
 
-bool NullptrDerefDetector::canSafelyDerefPtr(const SVFVar* value, const ICFGNode* node)
+bool NullptrDerefDetector::canSafelyDerefPtr(const ValVar* value, const ICFGNode* node)
 {
     auto& ae = AbstractInterpretation::getAEInstance();
     const AbstractValue& AbsVal = ae.getAbsValue(value, node);
