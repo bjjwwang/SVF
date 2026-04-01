@@ -126,6 +126,24 @@ public:
     /// Get the state manager instance.
     AbstractStateManager* getStateMgr() { return svfStateMgr; }
 
+    // ---------------------------------------------------------------
+    //  Convenience wrappers around AbstractStateManager
+    // ---------------------------------------------------------------
+    inline AbstractState& getAbsState(const ICFGNode* node)
+    { return svfStateMgr->getAbstractState(node); }
+
+    inline bool hasAbsState(const ICFGNode* node)
+    { return svfStateMgr->hasAbstractState(node); }
+
+    inline void setAbsState(const ICFGNode* node, const AbstractState& state)
+    { svfStateMgr->updateAbstractState(node, state); }
+
+    inline const AbstractValue& getAbsValue(const SVFVar* var, const ICFGNode* node)
+    { return svfStateMgr->getAbstractValue(var, node); }
+
+    inline void setAbsValue(const SVFVar* var, const AbstractValue& val, const ICFGNode* node)
+    { svfStateMgr->updateAbstractValue(var, val, node); }
+
     /// Propagate an ObjVar's abstract value from defSite to all its use-sites.
     void propagateObjVarAbsVal(const ObjVar* var, const ICFGNode* defSite);
 
@@ -190,7 +208,6 @@ private:
     void updateStateOnSelect(const SelectStmt *select);
 
     void updateStateOnPhi(const PhiStmt *phi);
-
 
     /// protected data members, also used in subclasses
     SVFIR* svfir;
