@@ -973,6 +973,7 @@ void AbstractInterpretation::updateStateOnPhi(const PhiStmt *phi)
         const ICFGNode* opICFGNode = phi->getOpICFGNode(i);
         if (hasAbsState(opICFGNode))
         {
+            AbstractState tmpState = getAbsState(opICFGNode);
             const AbstractValue& opVal = getAbsValue(phi->getOpVar(i), opICFGNode);
             const ICFGEdge* edge = icfg->getICFGEdge(opICFGNode, icfgNode, ICFGEdge::IntraCF);
             if (edge)
@@ -980,7 +981,6 @@ void AbstractInterpretation::updateStateOnPhi(const PhiStmt *phi)
                 const IntraCFGEdge* intraEdge = SVFUtil::cast<IntraCFGEdge>(edge);
                 if (intraEdge->getCondition())
                 {
-                    AbstractState tmpState = getAbsState(opICFGNode);
                     if (isBranchFeasible(intraEdge, tmpState))
                         rhs.join_with(opVal);
                 }
