@@ -214,20 +214,10 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode* node)
         {
             if (intraCfgEdge->getCondition())
             {
-                std::vector<std::pair<const ObjVar*, AbstractValue>> updates;
-                if (!isBranchFeasible(intraCfgEdge, updates))
+                narrowed = getAbsState(pred);
+                if (!isBranchFeasible(intraCfgEdge, narrowed))
                     continue;
-                if (updates.empty())
-                {
-                    incoming = &getAbsState(pred);
-                }
-                else
-                {
-                    narrowed = getAbsState(pred);
-                    for (auto& [objVar, val] : updates)
-                        narrowed.store(AbstractState::getVirtualMemAddress(objVar->getId()), val);
-                    incoming = &narrowed;
-                }
+                incoming = &narrowed;
             }
             else
             {
@@ -275,7 +265,7 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode* node)
 
 bool AbstractInterpretation::isCmpBranchFeasible(
     const CmpStmt* cmpStmt, s64_t succ, const ICFGNode* pred,
-    std::vector<std::pair<const ObjVar*, AbstractValue>>& updates)
+    AbstractState& as)
 {
     NodeID op0id = cmpStmt->getOpVarID(0);
     NodeID op1id = cmpStmt->getOpVarID(1);
@@ -350,19 +340,19 @@ bool AbstractInterpretation::isCmpBranchFeasible(
 
     // Get addresses of the backing memory object (if any) for the lhs register
     AddressValue addrs;
-    if (load_op0)
-        addrs = getAbsValue(svfir->getSVFVar(load_op0->getRHSVarID()), pred).getAddrs();
+    if (load_op0 && as.inVarToAddrsTable(load_op0->getRHSVarID()))
+        addrs = as[load_op0->getRHSVarID()].getAddrs();
 
+    IntervalValue &lhs = as[op0id].getInterval();
     const IntervalValue& rhs = op1AbsVal.getInterval();
 
-    // Compute the narrowing constraint from the predicate
-    IntervalValue constraint;
+    // Narrow lhs interval and backing memory based on predicate
     switch (predicate)
     {
     case CmpStmt::Predicate::ICMP_EQ:
     case CmpStmt::Predicate::FCMP_OEQ:
     case CmpStmt::Predicate::FCMP_UEQ:
-        constraint = rhs;
+        lhs.meet_with(rhs);
         break;
     case CmpStmt::Predicate::ICMP_NE:
     case CmpStmt::Predicate::FCMP_ONE:
@@ -374,58 +364,52 @@ bool AbstractInterpretation::isCmpBranchFeasible(
     case CmpStmt::Predicate::ICMP_SGT:
     case CmpStmt::Predicate::FCMP_OGT:
     case CmpStmt::Predicate::FCMP_UGT:
-        constraint = IntervalValue(rhs.lb() + 1, IntervalValue::plus_infinity());
+        lhs.meet_with(IntervalValue(rhs.lb() + 1, IntervalValue::plus_infinity()));
         break;
     case CmpStmt::Predicate::ICMP_UGE:
     case CmpStmt::Predicate::ICMP_SGE:
     case CmpStmt::Predicate::FCMP_OGE:
     case CmpStmt::Predicate::FCMP_UGE:
-        constraint = IntervalValue(rhs.lb(), IntervalValue::plus_infinity());
+        lhs.meet_with(IntervalValue(rhs.lb(), IntervalValue::plus_infinity()));
         break;
     case CmpStmt::Predicate::ICMP_ULT:
     case CmpStmt::Predicate::ICMP_SLT:
     case CmpStmt::Predicate::FCMP_OLT:
     case CmpStmt::Predicate::FCMP_ULT:
-        constraint = IntervalValue(IntervalValue::minus_infinity(), rhs.ub() - 1);
+        lhs.meet_with(IntervalValue(IntervalValue::minus_infinity(), rhs.ub() - 1));
         break;
     case CmpStmt::Predicate::ICMP_ULE:
     case CmpStmt::Predicate::ICMP_SLE:
     case CmpStmt::Predicate::FCMP_OLE:
     case CmpStmt::Predicate::FCMP_ULE:
-        constraint = IntervalValue(IntervalValue::minus_infinity(), rhs.ub());
+        lhs.meet_with(IntervalValue(IntervalValue::minus_infinity(), rhs.ub()));
         break;
     default:
         assert(false && "implement this part");
         abort();
     }
 
-    // Narrow each ObjVar behind op0's load chain and record the update
-    const AbstractState& predState = getAbsState(pred);
+    // Also narrow the backing memory objects behind the load chain
     for (const auto& addr : addrs)
     {
-        NodeID objId = predState.getIDFromAddr(addr);
-        if (predState.inAddrToValTable(objId))
-        {
-            const ObjVar* objVar = SVFUtil::dyn_cast<ObjVar>(svfir->getSVFVar(objId));
-            AbstractValue objAbsVal = getAbsValue(objVar, pred);
-            objAbsVal.getInterval().meet_with(constraint);
-            updates.push_back({objVar, objAbsVal});
-        }
+        NodeID objId = as.getIDFromAddr(addr);
+        if (as.inAddrToValTable(objId))
+            as.load(addr).meet_with(lhs);
     }
     return true;
 }
 
 bool AbstractInterpretation::isSwitchBranchFeasible(
     const SVFVar* var, s64_t succ, const ICFGNode* pred,
-    std::vector<std::pair<const ObjVar*, AbstractValue>>& updates)
+    AbstractState& as)
 {
-    AbstractValue condAbsVal = getAbsValue(var, pred);
-    condAbsVal.getInterval().meet_with(IntervalValue(succ, succ));
-    if (condAbsVal.getInterval().isBottom())
+    if (!as.inVarToValTable(var->getId()) && !as.inVarToAddrsTable(var->getId()))
+        as[var->getId()] = getAbsValue(var, pred);
+    IntervalValue& switch_cond = as[var->getId()].getInterval();
+    switch_cond.meet_with(IntervalValue(succ, succ));
+    if (switch_cond.isBottom())
         return false;
 
-    const IntervalValue& narrowed = condAbsVal.getInterval();
-    const AbstractState& predState = getAbsState(pred);
     FIFOWorkList<const SVFStmt*> stmtList;
     for (SVFStmt* stmt : var->getInEdges())
         stmtList.push(stmt);
@@ -434,17 +418,14 @@ bool AbstractInterpretation::isSwitchBranchFeasible(
         const SVFStmt* stmt = stmtList.pop();
         if (const LoadStmt* load = SVFUtil::dyn_cast<LoadStmt>(stmt))
         {
-            const AddressValue& addrs = getAbsValue(
-                svfir->getSVFVar(load->getRHSVarID()), pred).getAddrs();
-            for (const auto& addr : addrs)
+            if (as.inVarToAddrsTable(load->getRHSVarID()))
             {
-                NodeID objId = predState.getIDFromAddr(addr);
-                if (predState.inAddrToValTable(objId))
+                const AddressValue& addrs = as[load->getRHSVarID()].getAddrs();
+                for (const auto& addr : addrs)
                 {
-                    const ObjVar* objVar = SVFUtil::dyn_cast<ObjVar>(svfir->getSVFVar(objId));
-                    AbstractValue objAbsVal = getAbsValue(objVar, pred);
-                    objAbsVal.getInterval().meet_with(narrowed);
-                    updates.push_back({objVar, objAbsVal});
+                    NodeID objId = as.getIDFromAddr(addr);
+                    if (as.inAddrToValTable(objId))
+                        as.load(addr).meet_with(switch_cond);
                 }
             }
         }
@@ -453,16 +434,15 @@ bool AbstractInterpretation::isSwitchBranchFeasible(
 }
 
 bool AbstractInterpretation::isBranchFeasible(const IntraCFGEdge* edge,
-    std::vector<std::pair<const ObjVar*, AbstractValue>>& updates)
+    AbstractState& as)
 {
     const ICFGNode* pred = edge->getSrcNode();
     const SVFVar* cmpVar = edge->getCondition();
     s64_t succ = edge->getSuccessorCondValue();
     assert(!cmpVar->getInEdges().empty() && "branch condition has no defining edge?");
     if (const CmpStmt* cmpStmt = SVFUtil::dyn_cast<CmpStmt>(*cmpVar->getInEdges().begin()))
-        return isCmpBranchFeasible(cmpStmt, succ, pred, updates);
-    else
-        return isSwitchBranchFeasible(cmpVar, succ, pred, updates);
+        return isCmpBranchFeasible(cmpStmt, succ, pred, as);
+    return isSwitchBranchFeasible(cmpVar, succ, pred, as);
 }
 
 /**
@@ -1000,8 +980,8 @@ void AbstractInterpretation::updateStateOnPhi(const PhiStmt *phi)
                 const IntraCFGEdge* intraEdge = SVFUtil::cast<IntraCFGEdge>(edge);
                 if (intraEdge->getCondition())
                 {
-                    std::vector<std::pair<const ObjVar*, AbstractValue>> unused;
-                    if (isBranchFeasible(intraEdge, unused))
+                    AbstractState tmpState = getAbsState(opICFGNode);
+                    if (isBranchFeasible(intraEdge, tmpState))
                         rhs.join_with(opVal);
                 }
                 else

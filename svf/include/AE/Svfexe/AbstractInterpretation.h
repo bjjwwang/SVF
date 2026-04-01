@@ -156,9 +156,8 @@ private:
     /// abstractTrace[node]. Returns true if at least one predecessor had state.
     bool mergeStatesFromPredecessors(const ICFGNode* node);
 
-    /// Returns true if the branch on intraEdge is reachable; populates updates with narrowed ObjVar values.
-    bool isBranchFeasible(const IntraCFGEdge* edge,
-                          std::vector<std::pair<const ObjVar*, AbstractValue>>& updates);
+    /// Returns true if the branch is reachable; narrows as in-place.
+    bool isBranchFeasible(const IntraCFGEdge* edge, AbstractState& as);
 
     /// Handle a call site node: dispatch to ext-call, direct-call, or indirect-call handling
     virtual void handleCallSite(const ICFGNode* node);
@@ -178,14 +177,13 @@ private:
     /// Set all store targets and return value to TOP for a recursive cal node
     virtual void setTopToObjInRecursion(const CallICFGNode* callnode);
 
-    /// Checks if cmpStmt's branch to succ is feasible under pred's state; populates updates with narrowed ObjVar values.
-    bool isCmpBranchFeasible(const CmpStmt* cmpStmt, s64_t succ, const ICFGNode* pred,
-                             std::vector<std::pair<const ObjVar*, AbstractValue>>& updates);
+    /// Checks if cmpStmt's branch to succ is feasible; narrows as in-place.
+    bool isCmpBranchFeasible(const CmpStmt* cmpStmt, s64_t succ,
+                             const ICFGNode* pred, AbstractState& as);
 
-    /// Checks if the condition variable's interval can include `succ`;
-    /// used for switch cases and any branch whose condition is not a CmpStmt.
-    bool isSwitchBranchFeasible(const SVFVar* var, s64_t succ, const ICFGNode* pred,
-                               std::vector<std::pair<const ObjVar*, AbstractValue>>& updates);
+    /// Checks if the switch condition can equal succ; narrows as in-place.
+    bool isSwitchBranchFeasible(const SVFVar* var, s64_t succ,
+                                const ICFGNode* pred, AbstractState& as);
 
     void updateStateOnAddr(const AddrStmt *addr);
 
