@@ -193,12 +193,14 @@ void AbstractInterpretation::handleGlobalNode()
 /// Pull-based state merge: for each predecessor that has an abstract state,
 /// copy its state, apply branch refinement for conditional IntraCFGEdges,
 /// and join all feasible states into getAbsState(node).
-/// In semi-sparse mode, only ObjVar state (AddrToVal) is merged; ValVars are
-/// pulled on demand via getAbstractValue from their def-sites.
+/// The join semantics are sparsity-aware (see AbstractState::joinWith).
 /// Returns true if at least one predecessor contributed state.
 bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode* node)
 {
-    bool first = true;
+    // Start with bottom; joinWith(bottom, X) == X, so the first
+    // predecessor's state is adopted as-is without special-casing.
+    setAbsState(node, AbstractState());
+    bool feasible = false;
 
     for (auto& edge : node->getInEdges())
     {
@@ -206,34 +208,33 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode* node)
         if (!hasAbsState(pred))
             continue;
 
-        // Determine whether this edge contributes state, and get a pointer to it.
-        const AbstractState* incoming = nullptr;
-        AbstractState narrowed;
-
         if (const IntraCFGEdge* intraCfgEdge = SVFUtil::dyn_cast<IntraCFGEdge>(edge))
         {
             if (intraCfgEdge->getCondition())
             {
-                narrowed = getAbsState(pred);
-                if (!isBranchFeasible(intraCfgEdge, narrowed))
+                AbstractState predState = getAbsState(pred);
+                if (!isBranchFeasible(intraCfgEdge, predState))
                     continue;
-                incoming = &narrowed;
+                getAbsState(node).joinWith(predState);
             }
             else
             {
-                incoming = &getAbsState(pred);
+                getAbsState(node).joinWith(getAbsState(pred));
             }
+            feasible = true;
         }
         else if (SVFUtil::isa<CallCFGEdge>(edge))
         {
-            incoming = &getAbsState(pred);
+            getAbsState(node).joinWith(getAbsState(pred));
+            feasible = true;
         }
         else if (SVFUtil::isa<RetCFGEdge>(edge))
         {
             switch (Options::HandleRecur())
             {
             case TOP:
-                incoming = &getAbsState(pred);
+                getAbsState(node).joinWith(getAbsState(pred));
+                feasible = true;
                 break;
             case WIDEN_ONLY:
             case WIDEN_NARROW:
@@ -241,25 +242,17 @@ bool AbstractInterpretation::mergeStatesFromPredecessors(const ICFGNode* node)
                 const RetICFGNode* returnSite = SVFUtil::dyn_cast<RetICFGNode>(node);
                 const CallICFGNode* callSite = returnSite->getCallICFGNode();
                 if (hasAbsState(callSite))
-                    incoming = &getAbsState(pred);
+                {
+                    getAbsState(node).joinWith(getAbsState(pred));
+                    feasible = true;
+                }
                 break;
             }
             }
         }
-
-        if (!incoming)
-            continue;
-
-        if (first)
-        {
-            setAbsState(node, *incoming);
-            first = false;
-        }
-        else
-            getAbsState(node).joinWith(*incoming);
     }
 
-    return !first;
+    return feasible;
 }
 
 
