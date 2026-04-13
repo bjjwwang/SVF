@@ -952,23 +952,25 @@ void AbstractInterpretation::handleLoopOrRecursion(const ICFGCycleWTO* cycle, co
     // Iterate until fixpoint with widening/narrowing on the cycle head.
     bool increasing = true;
     u32_t widen_delay = Options::WidenDelay();
+    auto& abstractTrace = svfStateMgr->getTrace();
     for (u32_t cur_iter = 0;; cur_iter++)
     {
         if (cur_iter >= widen_delay)
         {
-            // Save state before processing head.  getFullCycleHeadState
-            // handles both dense (returns trace[cycle_head] as-is) and
-            // semi-sparse (collects ValVars from def-sites) uniformly.
-            AbstractState prev_head_state = getFullCycleHeadState(cycle);
+            // Save state before processing head
+            AbstractState prev_head_state = abstractTrace[cycle_head];
 
+            // Process cycle head: merge from predecessors, then execute statements
             if (mergeStatesFromPredecessors(cycle_head))
                 handleICFGNode(cycle_head);
-            AbstractState cur_head_state = getFullCycleHeadState(cycle);
+            AbstractState cur_head_state = abstractTrace[cycle_head];
 
             if (increasing)
             {
-                if (widenCycleState(prev_head_state, cur_head_state, cycle_head, cycle))
+                abstractTrace[cycle_head] = prev_head_state.widening(cur_head_state);
+                if (abstractTrace[cycle_head] == prev_head_state)
                 {
+                    // Widening fixpoint reached; switch to narrowing phase.
                     increasing = false;
                     continue;
                 }
@@ -977,13 +979,14 @@ void AbstractInterpretation::handleLoopOrRecursion(const ICFGCycleWTO* cycle, co
             {
                 if (!shouldApplyNarrowing(cycle_head->getFun()))
                     break;
-                if (narrowCycleState(prev_head_state, cur_head_state, cycle_head, cycle))
+                abstractTrace[cycle_head] = prev_head_state.narrowing(cur_head_state);
+                if (abstractTrace[cycle_head] == prev_head_state)
                     break;
             }
         }
         else
         {
-
+            // Before widen_delay: process cycle head with gated pattern
             if (mergeStatesFromPredecessors(cycle_head))
                 handleICFGNode(cycle_head);
         }
