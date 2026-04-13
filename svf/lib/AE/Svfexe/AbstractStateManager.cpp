@@ -121,6 +121,8 @@ const AbstractValue& AbstractStateManager::getAbstractValue(const ValVar* var, c
         if (as.inVarToValTable(id) || as.inVarToAddrsTable(id))
             return as[id];
         // Fall through to final top fallback
+        as[id] = IntervalValue::bottom();
+        return as[id];
     }
 
     // Semi-sparse mode: pull from def-site first, then check current state
