@@ -221,9 +221,11 @@ void AbstractInterpretation::analyzeFromAllProgEntries()
     }
     // handle Global ICFGNode of SVFModule
     handleGlobalNode();
+    const ICFGNode* globalNode = icfg->getGlobalICFGNode();
     for (const FunObjVar* entryFun : entryFunctions)
     {
         const ICFGNode* funEntry = icfg->getFunEntryICFGNode(entryFun);
+        updateAbsState(funEntry, getAbsState(globalNode));
         handleFunction(funEntry);
     }
 }
@@ -795,12 +797,19 @@ void AbstractInterpretation::handleFunction(const ICFGNode* funEntry, const Call
         if (const ICFGSingletonWTO* singleton = SVFUtil::dyn_cast<ICFGSingletonWTO>(comp))
         {
             const ICFGNode* node = singleton->getICFGNode();
-            if (mergeStatesFromPredecessors(node))
+            bool reachable = mergeStatesFromPredecessors(node);
+            if (!reachable && node == funEntry && hasAbsState(node))
+                reachable = true;
+            if (reachable)
                 handleICFGNode(node);
         }
         else if (const ICFGCycleWTO* cycle = SVFUtil::dyn_cast<ICFGCycleWTO>(comp))
         {
-            if (mergeStatesFromPredecessors(cycle->head()->getICFGNode()))
+            const ICFGNode* node = cycle->head()->getICFGNode();
+            bool reachable = mergeStatesFromPredecessors(node);
+            if (!reachable && node == funEntry && hasAbsState(node))
+                reachable = true;
+            if (reachable)
                 handleLoopOrRecursion(cycle, caller);
         }
     }
