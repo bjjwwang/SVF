@@ -94,6 +94,12 @@ public:
         WIDEN_NARROW
     };
 
+    enum FunEntryMode
+    {
+        SINGLE,
+        MULTIPLE
+    };
+
     virtual void runOnModule();
 
     /// Destructor
