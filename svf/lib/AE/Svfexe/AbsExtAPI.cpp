@@ -455,14 +455,22 @@ IntervalValue AbsExtAPI::getStrlen(const ValVar *strValue, const ICFGNode* node)
     const AbstractValue& ptrVal = ae->getAbsValue(strValue, node);
     for (const auto& addr : ptrVal.getAddrs())
     {
+        if (AbstractState::isNullMem(addr) ||
+                AbstractState::isBlackHoleObjAddr(addr))
+            continue;
         NodeID objId = as.getIDFromAddr(addr);
-        if (svfir->getBaseObject(objId)->isConstantByteSize())
+        const BaseObjVar* baseObj = svfir->getBaseObject(objId);
+        if (!baseObj || baseObj->isBlackHoleObj())
+            continue;
+        if (baseObj->isConstantByteSize())
         {
-            dst_size = svfir->getBaseObject(objId)->getByteSizeOfObj();
+            dst_size = baseObj->getByteSizeOfObj();
         }
         else
         {
-            const ICFGNode* icfgNode = svfir->getBaseObject(objId)->getICFGNode();
+            const ICFGNode* icfgNode = baseObj->getICFGNode();
+            if (!icfgNode)
+                continue;
             for (const SVFStmt* stmt2: icfgNode->getSVFStmts())
             {
                 if (const AddrStmt* addrStmt = SVFUtil::dyn_cast<AddrStmt>(stmt2))
@@ -565,8 +573,14 @@ void AbsExtAPI::handleMemcpy(const ValVar *dst,
             ae->getGepObjAddrs(dst, IntervalValue(index + start_idx));
         for (const auto &dstAddr: expr_dst.getAddrs())
         {
+            if (AbstractState::isNullMem(dstAddr) ||
+                    AbstractState::isBlackHoleObjAddr(dstAddr))
+                continue;
             for (const auto &srcAddr: expr_src.getAddrs())
             {
+                if (AbstractState::isNullMem(srcAddr) ||
+                        AbstractState::isBlackHoleObjAddr(srcAddr))
+                    continue;
                 u32_t objId = as.getIDFromAddr(srcAddr);
                 if (as.inAddrToValTable(objId) || as.inAddrToAddrsTable(objId))
                 {
@@ -613,6 +627,9 @@ void AbsExtAPI::handleMemset(const ValVar *dst,
         AbstractValue lhs_gep = ae->getGepObjAddrs(dst, IntervalValue(index));
         for (const auto &addr: lhs_gep.getAddrs())
         {
+            if (AbstractState::isNullMem(addr) ||
+                    AbstractState::isBlackHoleObjAddr(addr))
+                continue;
             u32_t objId = as.getIDFromAddr(addr);
             if (as.inAddrToValTable(objId))
             {

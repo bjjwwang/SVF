@@ -541,6 +541,43 @@ private:
         else
             return IntervalValue(lb, ub);
     }
+
+    static BoundedInt pow2OrPlusInfinity(const BoundedInt& exponent)
+    {
+        if (exponent.is_infinity())
+            return plus_infinity();
+
+        s64_t numeral = exponent.getIntNumeral();
+        if (numeral < 0)
+            return 0;
+        if (numeral >= 63)
+            return plus_infinity();
+
+        return static_cast<s64_t>(1ULL << static_cast<u64_t>(numeral));
+    }
+
+    static BoundedInt nonNegativeBitwiseUpperBound(const BoundedInt& bound)
+    {
+        if (bound.is_plus_infinity())
+            return plus_infinity();
+        if (bound.is_minus_infinity())
+            return 0;
+
+        s64_t numeral = bound.getIntNumeral();
+        if (numeral <= 0)
+            return 0;
+
+        const u64_t limit = static_cast<u64_t>(std::numeric_limits<s64_t>::max());
+        const u64_t value = static_cast<u64_t>(numeral);
+        u64_t mask = 0;
+        while (mask < value)
+        {
+            if (mask >= (limit >> 1))
+                return std::numeric_limits<s64_t>::max();
+            mask = (mask << 1) | 1ULL;
+        }
+        return static_cast<s64_t>(mask);
+    }
 }; // end class IntervalValue
 
 /// Add IntervalValues
@@ -897,25 +934,8 @@ inline IntervalValue operator<<(const IntervalValue &lhs, const IntervalValue &r
         shift.meet_with(IntervalValue(0, IntervalValue::plus_infinity()));
         if (shift.isBottom())
             return IntervalValue::bottom();
-        BoundedInt lb = 0;
-        // If the shift is greater than 32, the result is always 0
-        if ((s32_t) shift.lb().getNumeral() >= 32 || shift.lb().is_infinity())
-        {
-            lb = IntervalValue::minus_infinity();
-        }
-        else
-        {
-            lb = (1 << (s32_t) shift.lb().getNumeral());
-        }
-        BoundedInt ub = 0;
-        if (shift.ub().is_infinity())
-        {
-            ub = IntervalValue::plus_infinity();
-        }
-        else
-        {
-            ub = (1 << (s32_t) shift.ub().getNumeral());
-        }
+        BoundedInt lb = IntervalValue::pow2OrPlusInfinity(shift.lb());
+        BoundedInt ub = IntervalValue::pow2OrPlusInfinity(shift.ub());
         IntervalValue coeff(lb, ub);
         return lhs * coeff;
     }
@@ -986,15 +1006,6 @@ inline IntervalValue operator&(const IntervalValue &lhs, const IntervalValue &rh
 /// Bitwise OR of IntervalValues
 inline IntervalValue operator|(const IntervalValue &lhs, const IntervalValue &rhs)
 {
-    auto next_power_of_2 = [](s64_t num)
-    {
-        int i = 1;
-        while ((num >> i) != 0)
-        {
-            ++i;
-        }
-        return 1 << i;
-    };
     if (lhs.isBottom() || rhs.isBottom())
         return IntervalValue::bottom();
     else if (lhs.is_numeral() && rhs.is_numeral())
@@ -1002,9 +1013,8 @@ inline IntervalValue operator|(const IntervalValue &lhs, const IntervalValue &rh
     else if (lhs.lb().getNumeral() >= 0 && !lhs.ub().is_infinity() &&
              rhs.lb().getNumeral() >= 0 && !rhs.ub().is_infinity())
     {
-        s64_t m = std::max(lhs.ub().getNumeral(), rhs.ub().getNumeral());
-        s64_t ub = next_power_of_2(s64_t(m)) - 1;
-        return IntervalValue((s64_t) 0, (s64_t) ub);
+        BoundedInt ub = IntervalValue::nonNegativeBitwiseUpperBound(max(lhs.ub(), rhs.ub()));
+        return IntervalValue((s64_t) 0, ub);
     }
     else
     {
@@ -1015,15 +1025,6 @@ inline IntervalValue operator|(const IntervalValue &lhs, const IntervalValue &rh
 /// Bitwise XOR of IntervalValues
 inline IntervalValue operator^(const IntervalValue &lhs, const IntervalValue &rhs)
 {
-    auto next_power_of_2 = [](s64_t num)
-    {
-        int i = 1;
-        while ((num >> i) != 0)
-        {
-            ++i;
-        }
-        return 1 << i;
-    };
     if (lhs.isBottom() || rhs.isBottom())
         return IntervalValue::bottom();
     else if (lhs.is_numeral() && rhs.is_numeral())
@@ -1031,9 +1032,8 @@ inline IntervalValue operator^(const IntervalValue &lhs, const IntervalValue &rh
     else if (lhs.lb().getNumeral() >= 0 && !lhs.ub().is_infinity() &&
              rhs.lb().getNumeral() >= 0 && !rhs.ub().is_infinity())
     {
-        s64_t m = std::max(lhs.ub().getNumeral(), rhs.ub().getNumeral());
-        s64_t ub = next_power_of_2(s64_t(m)) - 1;
-        return IntervalValue((s64_t) 0, (s64_t) ub);
+        BoundedInt ub = IntervalValue::nonNegativeBitwiseUpperBound(max(lhs.ub(), rhs.ub()));
+        return IntervalValue((s64_t) 0, ub);
     }
     else
     {

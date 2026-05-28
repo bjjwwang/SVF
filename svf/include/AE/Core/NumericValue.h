@@ -518,6 +518,8 @@ public:
             return lhs;
         else if (rhs.is_infinity())
             return lhs.geq(0) ? 0 : -1;
+        else if (rhs._iVal >= 63)
+            return lhs.geq(0) ? 0 : -1;
         else
             return lhs._iVal >> rhs._iVal;
     }
@@ -535,6 +537,8 @@ public:
         else if (lhs.is_infinity())
             return lhs;
         else if (rhs.is_infinity())
+            return lhs.geq(0) ? plus_infinity() : minus_infinity();
+        else if (rhs._iVal >= 63)
             return lhs.geq(0) ? plus_infinity() : minus_infinity();
         else
             return lhs._iVal << rhs._iVal;

@@ -111,7 +111,8 @@ protected:
     /// updateAbsState, reachability return).  For reachable nodes,
     /// additionally run pullObjValueFlows to populate trace[node] with obj
     /// values from SVFG def-sites.
-    bool mergeStatesFromPredecessors(const ICFGNode* node) override;
+    bool mergeStatesFromPredecessors(const ICFGNode* node,
+                                     bool* stateChanged = nullptr) override;
 
     /// Capture branch narrowings into refinementTrace[succ] instead of
     /// writing them into the local `as`: in FullSparse `as` would be

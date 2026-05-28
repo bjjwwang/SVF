@@ -110,8 +110,16 @@ void FullSparseAbstractInterpretation::storeValue(const ValVar* pointer,
 }
 
 bool FullSparseAbstractInterpretation::mergeStatesFromPredecessors(
-    const ICFGNode* node)
+    const ICFGNode* node, bool* stateChanged)
 {
+    if (stateChanged)
+        *stateChanged = false;
+
+    AbstractState prev;
+    const bool hadState = hasAbsState(node);
+    if (stateChanged && hadState)
+        prev = getAbsState(node);
+
     refinementTrace.erase(node);
 
     if (!AbstractInterpretation::mergeStatesFromPredecessors(node))
@@ -122,6 +130,8 @@ bool FullSparseAbstractInterpretation::mergeStatesFromPredecessors(
     // Compose pred-inherited refinement on top of branch narrowings
     // just captured, then MEET into trace[node] so reads see narrowed.
     propagateAndApplyRefinement(node);
+    if (stateChanged)
+        *stateChanged = !hadState || getAbsState(node) != prev;
     return true;
 }
 

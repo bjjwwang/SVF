@@ -64,16 +64,23 @@ void BufOverflowDetector::detect(const ICFGNode* node)
                 for (const auto& addr : objAddrs)
                 {
                     NodeID objId = ae.getAbsState(node).getIDFromAddr(addr);
+                    const BaseObjVar* baseObj = svfir->getBaseObject(objId);
+                    if (!baseObj || baseObj->isBlackHoleObj())
+                        continue;
+
                     u32_t size = 0;
                     // like `int arr[10]` which has constant size before runtime
-                    if (svfir->getBaseObject(objId)->isConstantByteSize())
+                    if (baseObj->isConstantByteSize())
                     {
-                        size = svfir->getBaseObject(objId)->getByteSizeOfObj();
+                        size = baseObj->getByteSizeOfObj();
                     }
                     else
                     {
                         // like `int len = ***; int arr[len]`, whose size can only be known in runtime
-                        const ICFGNode* addrNode = svfir->getBaseObject(objId)->getICFGNode();
+                        const ICFGNode* addrNode = baseObj->getICFGNode();
+                        if (!addrNode)
+                            continue;
+
                         for (const SVFStmt* stmt2 : addrNode->getSVFStmts())
                         {
                             if (const AddrStmt* addrStmt = SVFUtil::dyn_cast<AddrStmt>(stmt2))
@@ -85,11 +92,26 @@ void BufOverflowDetector::detect(const ICFGNode* node)
 
                     // Calculate access offset and check for potential overflow
                     IntervalValue accessOffset = getAccessOffset(objId, gep);
-                    if (accessOffset.ub().getIntNumeral() >= size)
+                    if (accessOffset.lb().getIntNumeral() < 0 ||
+                            accessOffset.ub().getIntNumeral() >= size)
                     {
                         AEException bug(stmt->toString());
                         addBugToReporter(bug, stmt->getICFGNode());
                     }
+                }
+            }
+            else if (const StoreStmt* store = SVFUtil::dyn_cast<StoreStmt>(stmt))
+            {
+                const SVFType* type = store->getRHSVar()->getType();
+                u32_t width = 1;
+                if (type != nullptr && type->getByteSize() != 0)
+                    width = type->getByteSize();
+                if (!canSafelyAccessMemory(store->getLHSVar(),
+                                           IntervalValue(static_cast<s64_t>(width - 1)),
+                                           node))
+                {
+                    AEException bug(stmt->toString());
+                    addBugToReporter(bug, stmt->getICFGNode());
                 }
             }
         }
@@ -130,7 +152,7 @@ void BufOverflowDetector::handleStubFunctions(const SVF::CallICFGNode* callNode)
             assert(false && "SAFE_BUFACCESS size is bottom");
         }
         const ValVar* arg0Val = callNode->getArgument(0);
-        bool isSafe = canSafelyAccessMemory(arg0Val, val, callNode);
+        bool isSafe = canSafelyAccessMemory(arg0Val, val - IntervalValue(1), callNode);
         if (isSafe)
         {
             SVFUtil::outs() << SVFUtil::sucMsg("success: expected safe buffer access at SAFE_BUFACCESS")
@@ -154,7 +176,7 @@ void BufOverflowDetector::handleStubFunctions(const SVF::CallICFGNode* callNode)
             assert(false && "UNSAFE_BUFACCESS size is bottom");
         }
         const ValVar* arg0Val = callNode->getArgument(0);
-        bool isSafe = canSafelyAccessMemory(arg0Val, val, callNode);
+        bool isSafe = canSafelyAccessMemory(arg0Val, val - IntervalValue(1), callNode);
         if (!isSafe)
         {
             SVFUtil::outs() << SVFUtil::sucMsg("success: expected buffer overflow at UNSAFE_BUFACCESS")
@@ -180,11 +202,13 @@ void BufOverflowDetector::initExtAPIBufOverflowCheckRules()
 {
     extAPIBufOverflowCheckRules["llvm_memcpy_p0i8_p0i8_i64"] = {{0, 2}, {1, 2}};
     extAPIBufOverflowCheckRules["llvm_memcpy_p0_p0_i64"] = {{0, 2}, {1, 2}};
+    extAPIBufOverflowCheckRules["llvm.memcpy.p0.p0.i64"] = {{0, 2}, {1, 2}};
     extAPIBufOverflowCheckRules["llvm_memcpy_p0i8_p0i8_i32"] = {{0, 2}, {1, 2}};
     extAPIBufOverflowCheckRules["llvm_memcpy"] = {{0, 2}, {1, 2}};
     extAPIBufOverflowCheckRules["llvm_memmove"] = {{0, 2}, {1, 2}};
     extAPIBufOverflowCheckRules["llvm_memmove_p0i8_p0i8_i64"] = {{0, 2}, {1, 2}};
     extAPIBufOverflowCheckRules["llvm_memmove_p0_p0_i64"] = {{0, 2}, {1, 2}};
+    extAPIBufOverflowCheckRules["llvm.memmove.p0.p0.i64"] = {{0, 2}, {1, 2}};
     extAPIBufOverflowCheckRules["llvm_memmove_p0i8_p0i8_i32"] = {{0, 2}, {1, 2}};
     extAPIBufOverflowCheckRules["__memcpy_chk"] = {{0, 2}, {1, 2}};
     extAPIBufOverflowCheckRules["memmove"] = {{0, 2}, {1, 2}};
@@ -195,6 +219,7 @@ void BufOverflowDetector::initExtAPIBufOverflowCheckRules()
     extAPIBufOverflowCheckRules["llvm_memset_p0i8_i32"] = {{0, 2}};
     extAPIBufOverflowCheckRules["llvm_memset_p0i8_i64"] = {{0, 2}};
     extAPIBufOverflowCheckRules["llvm_memset_p0_i64"] = {{0, 2}};
+    extAPIBufOverflowCheckRules["llvm.memset.p0.i64"] = {{0, 2}};
     extAPIBufOverflowCheckRules["__memset_chk"] = {{0, 2}};
     extAPIBufOverflowCheckRules["wmemset"] = {{0, 2}};
     extAPIBufOverflowCheckRules["strncpy"] = {{0, 2}, {1, 2}};
@@ -215,6 +240,7 @@ void BufOverflowDetector::detectExtAPI(const CallICFGNode* call)
     auto& ae = AbstractInterpretation::getAEInstance();
 
     AbsExtAPI::ExtAPIType extType = AbsExtAPI::UNCLASSIFIED;
+    const std::string funcName = call->getCalledFunction()->getName();
 
     // Determine the type of external memory API
     for (const std::string &annotation : ExtAPI::getExtAPI()->getExtFuncAnnotations(call->getCalledFunction()))
@@ -226,6 +252,20 @@ void BufOverflowDetector::detectExtAPI(const CallICFGNode* call)
         if (annotation.find("STRCPY") != std::string::npos)
             extType = AbsExtAPI::STRCPY;
         if (annotation.find("STRCAT") != std::string::npos)
+            extType = AbsExtAPI::STRCAT;
+    }
+    if (extType == AbsExtAPI::UNCLASSIFIED)
+    {
+        if (funcName.find("memcpy") != std::string::npos ||
+                funcName.find("memmove") != std::string::npos)
+            extType = AbsExtAPI::MEMCPY;
+        else if (funcName.find("memset") != std::string::npos)
+            extType = AbsExtAPI::MEMSET;
+        else if (funcName.find("strcpy") != std::string::npos ||
+                 funcName.find("stpcpy") != std::string::npos)
+            extType = AbsExtAPI::STRCPY;
+        else if (funcName.find("strcat") != std::string::npos ||
+                 funcName.find("strncat") != std::string::npos)
             extType = AbsExtAPI::STRCAT;
     }
 
@@ -427,6 +467,35 @@ bool BufOverflowDetector::detectStrcat(const CallICFGNode *call)
         const ValVar* arg1Val = call->getArgument(1);
         IntervalValue strLen0 = ae.getUtils()->getStrlen(arg0Val, call);
         IntervalValue strLen1 = ae.getUtils()->getStrlen(arg1Val, call);
+        SVFIR* svfir = PAG::getPAG();
+        u32_t dstSize = 0;
+        const AbstractValue& dstPtrVal = ae.getAbsValue(arg0Val, call);
+        if (dstPtrVal.isAddr())
+        {
+            for (const auto& addr : dstPtrVal.getAddrs())
+            {
+                if (AbstractState::isNullMem(addr) ||
+                        AbstractState::isBlackHoleObjAddr(addr))
+                    continue;
+                NodeID objId = ae.getAbsState(call).getIDFromAddr(addr);
+                const BaseObjVar* baseObj = svfir->getBaseObject(objId);
+                if (!baseObj || baseObj->isBlackHoleObj())
+                    continue;
+                if (baseObj->isConstantByteSize())
+                    dstSize = std::max(dstSize, baseObj->getByteSizeOfObj());
+            }
+        }
+        if (dstSize > 0 && !strLen0.isBottom() &&
+                !strLen0.lb().is_minus_infinity())
+        {
+            s64_t dstLb = strLen0.lb().getIntNumeral();
+            s64_t dstUb = static_cast<s64_t>(dstSize - 1);
+            if (!strLen0.ub().is_plus_infinity())
+                dstUb = std::max(dstUb, strLen0.ub().getIntNumeral());
+            if (dstLb > dstUb)
+                dstLb = 0;
+            strLen0 = IntervalValue(dstLb, dstUb);
+        }
         IntervalValue totalLen = strLen0 + strLen1;
         return canSafelyAccessMemory(arg0Val, totalLen, call);
     }
@@ -471,16 +540,23 @@ bool BufOverflowDetector::canSafelyAccessMemory(const SVF::ValVar* value, const 
     for (const auto& addr : ptrVal.getAddrs())
     {
         NodeID objId = ae.getAbsState(node).getIDFromAddr(addr);
+        const BaseObjVar* baseObj = svfir->getBaseObject(objId);
+        if (!baseObj || baseObj->isBlackHoleObj())
+            continue;
+
         u32_t size = 0;
         // if the object is a constant size object, get the size directly
-        if (svfir->getBaseObject(objId)->isConstantByteSize())
+        if (baseObj->isConstantByteSize())
         {
-            size = svfir->getBaseObject(objId)->getByteSizeOfObj();
+            size = baseObj->getByteSizeOfObj();
         }
         else
         {
             // if the object is not a constant size object, get the size from the addrStmt
-            const ICFGNode* addrNode = svfir->getBaseObject(objId)->getICFGNode();
+            const ICFGNode* addrNode = baseObj->getICFGNode();
+            if (!addrNode)
+                continue;
+
             for (const SVFStmt* stmt2 : addrNode->getSVFStmts())
             {
                 if (const AddrStmt* addrStmt = SVFUtil::dyn_cast<AddrStmt>(stmt2))
@@ -518,10 +594,7 @@ void NullptrDerefDetector::detect(const ICFGNode* node)
         // external API like memset(*dst, elem, sz)
         // we check if it's external api and check the corrisponding index
         const CallICFGNode* callNode = SVFUtil::cast<CallICFGNode>(node);
-        if (SVFUtil::isExtCall(callNode->getCalledFunction()))
-        {
-            detectExtAPI(callNode);
-        }
+        detectExtAPI(callNode);
     }
     else
     {
@@ -541,8 +614,19 @@ void NullptrDerefDetector::detect(const ICFGNode* node)
             else if (const LoadStmt* load = SVFUtil::dyn_cast<LoadStmt>(stmt))
             {
                 // like llvm bitcode `p = load q`
-                // we check lhs p's all address are valid mem
-                const ValVar* lhs = load->getLHSVar();
+                // we check q's addresses because q is the dereferenced pointer
+                const ValVar* rhs = load->getRHSVar();
+                if (!canSafelyDerefPtr(rhs, node))
+                {
+                    AEException bug(stmt->toString());
+                    addBugToReporter(bug, stmt->getICFGNode());
+                }
+            }
+            else if (const StoreStmt* store = SVFUtil::dyn_cast<StoreStmt>(stmt))
+            {
+                // like llvm bitcode `store v, ptr q`
+                // we check q because it is the dereferenced store target
+                const ValVar* lhs = store->getLHSVar();
                 if (!canSafelyDerefPtr(lhs, node))
                 {
                     AEException bug(stmt->toString());
@@ -568,9 +652,6 @@ void NullptrDerefDetector::handleStubFunctions(const CallICFGNode* callNode)
         const ValVar* arg0Val = callNode->getArgument(0);
         // opt may directly dereference a null pointer and call UNSAFE_LOAD(null)
         bool isSafe = canSafelyDerefPtr(arg0Val, callNode) && arg0Val->getId() != 0;
-        SVFUtil::outs() << "[UNSAFE_LOAD] node=" << callNode->getId()
-                        << " arg0=" << arg0Val->getId() << " isSafe=" << isSafe
-                        << "\n";
         if (!isSafe)
         {
             SVFUtil::outs() << SVFUtil::sucMsg("success: expected null dereference at UNSAFE_LOAD")
@@ -613,23 +694,25 @@ void NullptrDerefDetector::detectExtAPI(const CallICFGNode* call)
     // get ext type
     // get argument index which are nullptr deref checkpoints for extapi
     std::vector<u32_t> tmp_args;
+    const std::string funcName = call->getCalledFunction()->getName();
     for (const std::string &annotation: ExtAPI::getExtAPI()->getExtFuncAnnotations(call->getCalledFunction()))
     {
         if (annotation.find("MEMCPY") != std::string::npos)
         {
-            if (call->arg_size() < 4)
-            {
-                // for memcpy(void* dest, const void* src, size_t n)
-                tmp_args.push_back(0);
-                tmp_args.push_back(1);
-            }
-            else
+            if (funcName.find("iconv") != std::string::npos)
             {
                 // for unsigned long iconv(void* cd, char **restrict inbuf, unsigned long *restrict inbytesleft, char **restrict outbuf, unsigned long *restrict outbytesleft)
                 tmp_args.push_back(1);
                 tmp_args.push_back(2);
                 tmp_args.push_back(3);
                 tmp_args.push_back(4);
+            }
+            else
+            {
+                // for memcpy/memmove intrinsics and libc wrappers:
+                // (void *dest, const void *src, size_t n, ...)
+                tmp_args.push_back(0);
+                tmp_args.push_back(1);
             }
         }
         else if (annotation.find("MEMSET") != std::string::npos)
@@ -651,6 +734,21 @@ void NullptrDerefDetector::detectExtAPI(const CallICFGNode* call)
             tmp_args.push_back(1);
         }
     }
+    if (tmp_args.empty())
+    {
+        if (funcName.find("memcpy") != std::string::npos ||
+                funcName.find("memmove") != std::string::npos ||
+                funcName.find("strcpy") != std::string::npos ||
+                funcName.find("strcat") != std::string::npos)
+        {
+            tmp_args.push_back(0);
+            tmp_args.push_back(1);
+        }
+        else if (funcName.find("memset") != std::string::npos)
+        {
+            tmp_args.push_back(0);
+        }
+    }
 
     for (const auto &arg: tmp_args)
     {
@@ -668,15 +766,17 @@ void NullptrDerefDetector::detectExtAPI(const CallICFGNode* call)
 
 bool NullptrDerefDetector::canSafelyDerefPtr(const ValVar* value, const ICFGNode* node)
 {
+    if (value == nullptr || value->getId() == IRGraph::NullPtr)
+        return false;
     auto& ae = AbstractInterpretation::getAEInstance();
     const AbstractValue& AbsVal = ae.getAbsValue(value, node);
-    if (isUninit(AbsVal)) return false;
+    if (isUninit(AbsVal)) return true;
     if (!AbsVal.isAddr()) return true;
     for (const auto &addr: AbsVal.getAddrs())
     {
-        // if the addr itself is invalid mem, report unsafe
+        // Escaped/unknown memory cannot be checked precisely here; skip reporting.
         if (AbstractState::isBlackHoleObjAddr(addr))
-            return false;
+            continue;
         // if nullptr is detected, return unsafe
         else if (AbstractState::isNullMem(addr))
             return false;
