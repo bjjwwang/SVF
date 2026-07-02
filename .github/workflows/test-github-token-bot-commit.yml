@@ -1,0 +1,25 @@
+name: test-github-token-bot-commit
+
+on:
+  push:
+    branches:
+      - test-github-token-bot-commit
+
+permissions:
+  contents: write
+
+jobs:
+  push-test:
+    if: github.repository == 'bjjwwang/SVF'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Commit with GitHub Actions bot
+        run: |
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          printf 'run_id=%s\n' "${GITHUB_RUN_ID}" >> github-token-bot-commit-test.txt
+          git add github-token-bot-commit-test.txt
+          git commit -m "Test GitHub Actions bot commit"
+          git push "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:${GITHUB_REF_NAME}
