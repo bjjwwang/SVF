@@ -816,6 +816,10 @@ const Option<bool> Options::AEReuse(
     "ae-reuse",
     "Full-sparse AE: reuse the last result of a WTO component (node or cycle) whose inputs are unchanged",
     true);
+const Option<bool> Options::AEMemBranchRefine(
+    "ae-mem-branch-refine",
+    "Full-sparse AE: stop Obj routes at branches so branch conditions refine Obj values (false: ICSE'24 baseline)",
+    true);
 const OptionMap<u32_t> Options::HandleRecur(
     "handle-recur",
     "Recursion handling mode in abstract execution (Default -widen-narrow)",

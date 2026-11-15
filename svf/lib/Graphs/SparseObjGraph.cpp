@@ -5,6 +5,7 @@
 #include "Graphs/GraphPrinter.h"
 #include "Graphs/SVFG.h"
 #include "MemoryModel/PointerAnalysis.h"
+#include "Util/Options.h"
 
 #include <deque>
 
@@ -205,7 +206,10 @@ SparseObjGraph::~SparseObjGraph() = default;
 
 bool SparseObjGraph::isBranch(const ICFGNode* node) const
 {
-    // Only conditional intra-function ICFG edges count as branches.
+    // Only conditional intra-function ICFG edges count as branches. Without
+    // memory branch refinement, Obj routes pass through branches unchanged.
+    if (!Options::AEMemBranchRefine())
+        return false;
 for (const ICFGEdge* out : node->getOutEdges())
 {
     const auto* intra = SVFUtil::dyn_cast<IntraCFGEdge>(out);
@@ -287,7 +291,8 @@ void SparseObjGraph::connectFunction(
             const IntraCFGEdge* intra = SVFUtil::dyn_cast<IntraCFGEdge>(out);
             if (!intra)
                 continue;
-            const IntraCFGEdge* branch = intra->getCondition() ? intra : nullptr;
+            const IntraCFGEdge* branch = intra->getCondition() &&
+                                         Options::AEMemBranchRefine() ? intra : nullptr;
             connectSegment(fun, source, intra->getDstNode(), branch, fresh,
                            eventsAt);
         }

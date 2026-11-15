@@ -240,6 +240,8 @@ public:
     static const Option<u32_t> WidenDelay;
     /// Full-sparse AE: skip a WTO component (node or cycle) whose inputs are unchanged
     static const Option<bool> AEReuse;
+    /// Full-sparse AE: route Obj values through branch nodes and refine them there
+    static const Option<bool> AEMemBranchRefine;
     /// recursion handling mode, Default: TOP
     static const OptionMap<u32_t> HandleRecur;
     /// the max time consumptions (seconds). Default: 4 hours 14400s
