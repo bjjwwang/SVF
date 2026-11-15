@@ -244,17 +244,21 @@ void BufOverflowDetector::detectExtAPI(const CallICFGNode* call)
             extType = AbsExtAPI::STRCAT;
     }
 
+    // Rules use C identifiers: llvm.memcpy.p0.p0.i64 is stored as llvm_memcpy_p0_p0_i64.
+    std::string funcName = call->getCalledFunction()->getName();
+    std::replace(funcName.begin(), funcName.end(), '.', '_');
+
     // Apply buffer overflow checks based on the determined API type
     BufferOverflowInfo info;
     if (extType == AbsExtAPI::MEMCPY)
     {
-        if (extAPIBufOverflowCheckRules.count(call->getCalledFunction()->getName()) == 0)
+        if (extAPIBufOverflowCheckRules.count(funcName) == 0)
         {
             SVFUtil::errs() << "Warning: " << call->getCalledFunction()->getName() << " is not in the rules, please implement it\n";
             return;
         }
         std::vector<std::pair<u32_t, u32_t>> args =
-            extAPIBufOverflowCheckRules.at(call->getCalledFunction()->getName());
+            extAPIBufOverflowCheckRules.at(funcName);
         for (auto arg : args)
         {
             IntervalValue offset = ae.getAbsValue(call->getArgument(arg.second), call).getInterval() - IntervalValue(1);
@@ -267,13 +271,13 @@ void BufOverflowDetector::detectExtAPI(const CallICFGNode* call)
     }
     else if (extType == AbsExtAPI::MEMSET)
     {
-        if (extAPIBufOverflowCheckRules.count(call->getCalledFunction()->getName()) == 0)
+        if (extAPIBufOverflowCheckRules.count(funcName) == 0)
         {
             SVFUtil::errs() << "Warning: " << call->getCalledFunction()->getName() << " is not in the rules, please implement it\n";
             return;
         }
         std::vector<std::pair<u32_t, u32_t>> args =
-            extAPIBufOverflowCheckRules.at(call->getCalledFunction()->getName());
+            extAPIBufOverflowCheckRules.at(funcName);
         for (auto arg : args)
         {
             IntervalValue offset = ae.getAbsValue(call->getArgument(arg.second), call).getInterval() - IntervalValue(1);
@@ -481,6 +485,9 @@ bool BufOverflowDetector::canSafelyAccessMemory(const ValVar* value, const Inter
     if (info) *info = {};
     SVFIR* svfir = PAG::getPAG();
     auto& ae = AbstractInterpretation::getAEInstance();
+    // A bottom length carries no value to check.
+    if (len.isBottom())
+        return true;
 
     AbstractValue ptrVal = ae.getAbsValue(value, node);
     if (!ptrVal.isAddr())
